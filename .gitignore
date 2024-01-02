@@ -1,0 +1,11 @@
+# Ignore all files in the root directory
+/*
+
+# Except this file
+!.gitignore
+!.DATASETS.md
+
+# Except this folder
+data/
+!Code/
+
