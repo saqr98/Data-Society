@@ -1,11 +1,3 @@
-ID,Label,ISO,Latitude,Longitude
-686,Senegal,SEN,14.0,-14.0
-704,Viet Nam,VNM,16.0,106.0
-242,Fiji,FJI,-18.0,175.0
-104,Myanmar,MMR,22.0,98.0
-604,Peru,PER,-10.0,-76.0
-410,Republic of Korea,KOR,37.0,127.5
-296,Kiribati,KIR,1.4167,173.0
-90,Solomon Islands,SLB,-8.0,159.0
-262,Djibouti,DJI,11.5,43.0
-496,Mongolia,MNG,46.0,105.0
+version https://git-lfs.github.com/spec/v1
+oid sha256:e5e4e11bc1461713e68cf34719237cbc3e5c256240f73a3a8ef224b2be0c5c6b
+size 319

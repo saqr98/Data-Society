@@ -1,12 +1,3 @@
-ID,Label,ISO,Latitude,Longitude
-800,Uganda,UGA,1.0,32.0
-31,Azerbaijan,AZE,40.5,47.5
-328,Guyana,GUY,5.0,-59.0
-208,Denmark,DNK,56.0,10.0
-28,Antigua and Barbuda,ATG,17.05,-61.8
-524,Nepal,NPL,28.0,84.0
-376,Israel,ISR,31.5,34.75
-116,Cambodia,KHM,13.0,105.0
-132,Cabo Verde,CPV,16.0,-24.0
-12,Algeria,DZA,28.0,3.0
-768,Togo,TGO,8.0,1.1667
+version https://git-lfs.github.com/spec/v1
+oid sha256:900e3176f05cb1ecfbd38bb49806dba29709c1d48a5a213d26812f2e3fc9785a
+size 330

@@ -1,12 +1,3 @@
-ID,Label,ISO,Latitude,Longitude
-136,Cayman Islands,CYM,19.5,-80.5
-204,Benin,BEN,9.5,2.25
-392,Japan,JPN,36.0,138.0
-478,Mauritania,MRT,20.0,-12.0
-218,Ecuador,ECU,-2.0,-77.5
-458,Malaysia,MYS,2.5,112.5
-344,China Hong Kong Special Administrative Region,HKG,22.25,114.1667
-584,Marshall Islands,MHL,9.0,168.0
-400,Jordan,JOR,31.0,36.0
-40,Austria,AUT,47.3333,13.3333
-422,Lebanon,LBN,33.8333,35.8333
+version https://git-lfs.github.com/spec/v1
+oid sha256:6f67c05ccfc5d2cfb46d1b2e3d11fb7207e26a319d4aac02e70950e39d2c916d
+size 390

@@ -1,12 +1,3 @@
-ID,Label,ISO,Latitude,Longitude
-804,Ukraine,UKR,49.0,32.0
-52,Barbados,BRB,13.1667,-59.5333
-384,Côte d'Ivoire,CIV,8.0,-5.0
-84,Belize,BLZ,17.25,-88.75
-430,Liberia,LBR,6.5,-9.5
-528,Netherlands,NLD,52.5,5.75
-646,Rwanda,RWA,-2.0,30.0
-212,Dominica,DMA,15.4167,-61.3333
-690,Seychelles,SYC,-4.5833,55.6667
-372,Ireland,IRL,53.0,-8.0
-64,Bhutan,BTN,27.5,90.5
+version https://git-lfs.github.com/spec/v1
+oid sha256:1c4d9f2878c0ad8a4248d519518341aa6c50e52120db97af6b150b6b853eba6f
+size 349

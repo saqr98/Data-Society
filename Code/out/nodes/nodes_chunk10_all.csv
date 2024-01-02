@@ -1,12 +1,3 @@
-ID,Label,ISO,Latitude,Longitude
-792,Türkiye,TUR,39.0,35.0
-858,Uruguay,URY,-33.0,-56.0
-788,Tunisia,TUN,34.0,9.0
-688,Serbia,SRB,44.0,21.0
-170,Colombia,COL,4.0,-72.0
-760,Syrian Arab Republic,SYR,35.0,38.0
-60,Bermuda,BMU,32.3333,-64.75
-446,China Macao Special Administrative Region,MAC,22.1667,113.55
-404,Kenya,KEN,1.0,38.0
-598,Papua New Guinea,PNG,-6.0,147.0
-44,Bahamas,BHS,24.25,-76.0
+version https://git-lfs.github.com/spec/v1
+oid sha256:b56dd4b55968cd19c14f13d75ea0509a8ac086c7b665a9cbb33c921e918ba4d6
+size 384

@@ -1,12 +1,3 @@
-ID,Label,ISO,Latitude,Longitude
-44,Bahamas,BHS,24.25,-76.0
-124,Canada,CAN,60.0,-95.0
-682,Saudi Arabia,SAU,25.0,45.0
-68,Bolivia,BOL,-17.0,-65.0
-498,Republic of Moldova,MDA,47.00556,28.8575
-8,Albania,ALB,41.0,20.0
-222,El Salvador,SLV,13.8333,-88.9167
-756,Switzerland,CHE,47.0,8.0
-4,Afghanistan,AFG,33.0,65.0
-703,Slovakia,SVK,48.6667,19.5
-188,Costa Rica,CRI,10.0,-84.0
+version https://git-lfs.github.com/spec/v1
+oid sha256:2e43a06d0c200ce193fd239dbce70c47fb8088f30582e11994efa0659c649830
+size 366

@@ -1,12 +1,3 @@
-ID,Label,ISO,Latitude,Longitude
-36,Australia,AUS,-27.0,133.0
-360,Indonesia,IDN,-5.0,120.0
-398,Kazakhstan,KAZ,48.0,68.0
-762,Tajikistan,TJK,39.0,71.0
-276,Germany,DEU,51.0,9.0
-144,Sri Lanka,LKA,7.0,81.0
-654,Saint Helena,SHN,-15.9333,-5.7
-662,Saint Lucia,LCA,13.8833,-61.1333
-724,Spain,ESP,40.0,-4.0
-50,Bangladesh,BGD,24.0,90.0
-96,Brunei Darussalam,BRN,4.5,114.6667
+version https://git-lfs.github.com/spec/v1
+oid sha256:ae7b885afa08f094a25df8594121ea64f7ace94b5bd0ca2c6413f53ae1c01798
+size 362
