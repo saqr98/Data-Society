@@ -1,3 +1,14 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:95e0110e829b10011af2b1c95ca88139975f823cdf74deaabc0353ada7a58560
-size 173
+# Ignore all files in the root directory
+/*
+
+# Ignore .DS_Store
+.DS_Store
+
+# Except this file
+!.gitignore
+!.gitattributes
+!DATASETS.md
+
+# And this folder
+!Code/
+!Code/data
