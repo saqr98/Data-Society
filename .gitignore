@@ -4,11 +4,17 @@
 # Ignore .DS_Store
 .DS_Store
 
-# Except this file
+# Except these files
 !.gitignore
 !.gitattributes
 !DATASETS.md
 
+
+# This file type
+*.gz
+
 # And this folder
 !Code/
-!Code/data
+Code/data/helper/
+Code/data/*.csv
+# !Code/data

@@ -1,9 +1,21 @@
+import os
 import time
 import math
 import itertools
 import pandas as pd 
 import multiprocessing as mp
 import concurrent.futures as cf
+
+
+class Colors:
+    ERROR = "\033[31m"
+    SUCCESS = "\033[032m"
+    WARNING = "\033[33m"
+    BLUE = "\033[34m"
+    RESET = "\033[0m"
+    UNDERLINE = "\033[4m"
+    UNDERLINE_OFF = "\033[24m"
+    BOLD = "\033[1m"
 
 
 # Mapping taken from 'An Ordinal Latent Variable Model of Conflict Intensity'
@@ -18,7 +30,7 @@ CAMEO2CAT = {
 }
 
 # Mapping of Country Names to ISO Codes 
-COUNTRYCODES = pd.read_csv('Project/Code/data/countrycodes_extended.csv', usecols=[0,1,2,3,4])
+COUNTRYCODES = pd.read_csv('../data/countrycodes_extended.csv', usecols=[0,1,2,3,4])
 
 
 def compress_goldstein(x: int, a=-10, b=10, c=0, d=1) -> int:
@@ -40,7 +52,6 @@ def compress_goldstein(x: int, a=-10, b=10, c=0, d=1) -> int:
     return d - ((x - a) * (d - c) / (b - a) + c)
 
 
-
 def calculate_weight(goldstein: int, tone: int) -> int:
     """
     Calculate the weight of an event using its originally 
@@ -59,21 +70,16 @@ def clean_countries(countries: set) -> set:
     for country in countries:
         if country in COUNTRYCODES["ISO-alpha3 code"].values:
             res.add(country)
-
-    print(res)
     return res
 
 
-def make_undirected():
-    edges = pd.read_csv('Project/Code/out/edges.csv')
-    print(edges)
-
-
-def extract_events(arg):
+def extract_events(arg: []):
+    start = time.perf_counter()
     i, events, pairs = arg[0], arg[1], arg[2]
+    print(f'[{Colors.WARNING}!{Colors.RESET}] Started Worker {i}')
     nodes = pd.DataFrame(columns=['ID', 'Label', 'ISO', 'Latitude', 'Longitude'])
-    edges = pd.DataFrame(columns=['Source', 'Target', 'ID', 'Weight', 'Type'])
-    edge_id = -1
+    edges = pd.DataFrame(columns=['Source', 'Target', 'Weight', 'Type'])
+    # edge_id = -1
 
     for source, target in pairs:
         if source in CAMEO2CAT["region"] or target in CAMEO2CAT["region"]:
@@ -99,14 +105,18 @@ def extract_events(arg):
         nodes = pd.concat([nodes, node], ignore_index=True)
 
         # Create Edge Entry
-        edge_id += 1
-        edge = pd.DataFrame([{'Source': src_id, 'Target': trgt_id, 'ID': edge_id, 'Weight': average_sentiment, 'Type': 'directed'}])
+        # edge_id += 1 # Removed 'ID': edge_id, from edge-DataFrame
+        edge = pd.DataFrame([{'Source': src_id, 'Target': trgt_id, 'Weight': average_sentiment, 'Type': 'directed'}])
         edges = pd.concat([edges, edge], ignore_index=True)
 
     nodes = nodes.drop_duplicates()
     edges = edges.drop_duplicates()
-    nodes.to_csv(f'Project/Code/out/nodes/nodes_chunk{i}_all.csv', sep=',', index=False)
-    edges.to_csv(f'Project/Code/out/edges/edges_chunk{i}_all.csv', sep=',', index=False)
+    
+    nodes.to_csv(f'../out/nodes/nodes_chunk{i}_all.csv.gz', sep=',', index=False, compression='gzip')
+    edges.to_csv(f'../out/edges/edges_chunk{i}_all.csv.gz', sep=',', index=False, compression='gzip')
+    
+    total = time.perf_counter() - start
+    return (i, total)
 
 
 def preprocess() -> ():
@@ -115,80 +125,119 @@ def preprocess() -> ():
     participating countries and create all permutations for list of all 
     countries with potential interactions.
     """
-    # Read Events and compute weights per event
-    events = pd.read_csv('Project/Code/data/20231011_All.csv')
+    # Read Events and filter out non-country events
+    events = pd.read_csv('../data/20231011_All.csv')
+    events = events[(events["Actor1CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"])) & 
+                    (events["Actor2CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"]))]
+
+    # Compute weights per event
     events['Weight'] = calculate_weight(events['GoldsteinScale'], events['AvgTone'])
 
-    # Transform weights into positive weights in range [0, 10]
+    # And transform weights into positive weights in range [0, 10]
+    # TODO: Play around with weight range so as to increase repulsion
     current_upper = math.ceil(events["Weight"].max())
     current_lower = math.floor(events["Weight"].min())
-    events["Weight"] = events["Weight"].apply(lambda x: compress_goldstein(x, a=current_lower, b=current_upper, c=0, d=10))
+    events["Weight"] = events["Weight"].apply(lambda x: compress_goldstein(x, a=current_lower, b=current_upper, c=0, d=100))
 
-    # Extract unique Country Codes
+    # Create column w/ country-pairs from existing entries
+    events['CountryPairs'] = list(zip(events['Actor1CountryCode'], events['Actor2CountryCode']))
+    
+    # Extract unique Actor1-CountryCodes
     countries = set(events['Actor1CountryCode'].unique())
     countries = clean_countries(countries)
-    pairs = list(itertools.permutations(countries, 2))
+
+    # Compute all possible permutations from unqiue Country Codes
+    pairs = set(itertools.permutations(countries, 2))
+
+    # Reduce Set of pairs to only those that exist in the DataFrame
+    true_pairs = pairs.intersection(set(events['CountryPairs'].unique()))
     
-    return events, pairs
+    return events, true_pairs
 
 
-def split_into_chunks(lst, n):
+def split_into_chunks(lst: list, n: int) -> []:
     """
     Splits a list into n nearly equal chunks. 
     Used for multiprocessing.
     """
-    # For every chunk, calculate the start and end indices and yield the chunk
+    # For every chunk, calculate the start and end indices and return the chunk
     k, m = divmod(len(lst), n)
     return (lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
 
     
-def stitch_files(no):
+def stitch_files(no: int):
     """
     Once all events have been processed concurrently, their
     respective results need to be stitched back together into
     a single file for both nodes and edges.
+
+    :param no: Number of chunks to process
     """
     all_nodes = pd.DataFrame(columns=['ID', 'Label', 'ISO'])
-    all_edges = pd.DataFrame(columns=['Source', 'Target', 'ID', 'Weight', 'Type'])
+    all_edges = pd.DataFrame(columns=['Source', 'Target', 'Weight', 'Type'])
 
     for i in range(no):
-        nodes = pd.read_csv(f'Project/Code/out/nodes/nodes_chunk{i}_all.csv')
-        edges = pd.read_csv(f'Project/Code/out/edges/edges_chunk{i}_all.csv')
-
+        nodes = pd.read_csv(f'../out/nodes/nodes_chunk{i}_all.csv.gz')
+        edges = pd.read_csv(f'../out/edges/edges_chunk{i}_all.csv.gz')
+        
         # Drop edges for which there exists no weight, i.e. no media reports between two countries exist
         edges = edges.dropna(subset=['Weight'])
 
         # Add current chunks to final DataFrame
         all_nodes = pd.concat([all_nodes, nodes], ignore_index=True)
-        all_edges = pd.concat([all_edges, edges], ignore_index=True)
-
-    # Remove duplicate nodes and edges
+        all_edges = pd.concat([all_edges, edges], ignore_index=True)         
+        
+    # Remove duplicates and write to file
     all_nodes.drop_duplicates(inplace=True)
     all_edges.drop_duplicates(inplace=True)
 
-    # Write joined DataFrames to file
-    all_nodes.to_csv('Project/Code/out/nodes/nodes_all_stitched.csv', sep=',', index=False)
-    all_edges.to_csv('Project/Code/out/edges/edges_all_stitched.csv', sep=',', index=False)
+    all_nodes.to_csv('../out/nodes/nodes_all_stitched.csv', sep=',', index=False) # , compression='gzip')
+    all_edges.to_csv('../out/edges/edges_all_stitched.csv', sep=',', index=False) # , compression='gzip')
 
 
+def track_exec_time(total, results):
+    """
+    A method to track execution time to test processing improvements.
+    """
+    with open('../out/exec_time.csv', 'w') as f:
+            f.write('Worker,Time in Seconds\n')
+            for i in results:
+                print(f'[{Colors.ERROR}!{Colors.RESET}] Worker {i[0]} completed in {i[1]}')
+                f.write(f'{i[0]},{i[1]}\n')
+            f.write(f'Total,{total}\n')
+
+
+# TODO: Make Graph undirect. Average the weight of both edges and compress to positive range
+# TODO: Split by time to make dynamic
+# SOLVED? Figure out how to process larger datasets
 if __name__ == '__main__':
     start = time.perf_counter()
-    
+    # Change track=True, for logging of execution time of workers
+    track = False
 
-    # TODO: Make Graph undirect. Average the weight of both edges and compress to positive range
-    # TODO: Split by time to make dynamic
-    # TODO: Figure out how to process larger datasets
-
+    print(f'[{Colors.BLUE}*{Colors.RESET}] Start Processing...')
     events, pairs = preprocess()
 
-    # Split list of pairs to chunks
-    n_chunks = 20  
-    chunks = list(split_into_chunks(pairs, n_chunks))
-    args = [(i, events, chunk) for i, chunk in enumerate(chunks)]
+    # Split list of pairs into chunks, where no. of chunks == no. cores
+    n_chunks = 12 
+    chunks = list(split_into_chunks(list(pairs), n_chunks))
 
+    args = [(i, events[events['CountryPairs'].isin(chunk)], chunk) for i, chunk in enumerate(chunks)]
+    print(f'[{Colors.SUCCESS}+{Colors.RESET}] Preprocessing completed.')
+
+    # Concurrently process each chunk
+    print(f'[{Colors.BLUE}+{Colors.RESET}] Start Worker-Processes...')
     with cf.ProcessPoolExecutor() as exec:
         results = exec.map(extract_events, args)
-    
-    #extract_events((99, events, pairs))
+
+    # Merge chunked results into single file
+    print(f'[{Colors.BLUE}+{Colors.RESET}] Merge Results')
     stitch_files(n_chunks)
-    print(time.perf_counter() - start)
+
+    print(f'[{Colors.SUCCESS}*{Colors.RESET}] Processing completed!')
+    total = time.perf_counter() - start
+    print(total)
+    if track:
+            track_exec_time(total, results)
+
+    
