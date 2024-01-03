@@ -86,6 +86,7 @@ def extract_events(arg: []):
             continue
         
         # Extract unilateral events per country
+        # TODO: Check whether this statement is still needed
         filtered_events = events[(events['Actor1CountryCode'] == source) & (events['Actor2CountryCode'] == target)]
         if filtered_events is None:
             continue
