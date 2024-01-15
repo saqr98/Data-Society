@@ -74,6 +74,34 @@ def clean_countries(countries: set) -> set:
     return res
 
 
+def track_exec_time(total: float, results):
+    """
+    A method to track execution time to test processing improvements.
+
+    :param total: Overall execution time of program
+    :param results: List of execution times of individual workers
+    """
+    with open('../out/exec_time.csv', 'w') as f:
+            f.write('Worker,Time in Seconds\n')
+            for i in results:
+                print(f'[{Colors.SUCCESS}✓{Colors.RESET}] Worker {i[0]} completed in {i[1]:.3f}s')
+                f.write(f'{i[0]},{i[1]:.3f}\n')
+            f.write(f'Total,{total:.3f}\n')
+  
+
+def split_into_chunks(lst: list, n: int) -> []:
+    """
+    Splits a list into n nearly equal chunks.
+    Necessary to support multiprocessing.
+
+    :param lst: List to split
+    :param n: Number of chunks to split into
+    """
+    # For every chunk, calculate the start and end indices and return the chunk
+    k, m = divmod(len(lst), n)
+    return (lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+
+
 def transform_undirected():
     """
     Transform directed edges into undirected edges and use
@@ -207,19 +235,6 @@ def preprocess(files: [], dynamic=False) -> ():
     
     return events, true_pairs, None
 
-
-def split_into_chunks(lst: list, n: int) -> []:
-    """
-    Splits a list into n nearly equal chunks. 
-    Necessary to support multiprocessing.
-
-    :param lst: List to split
-    :param n: Number of chunks to split into
-    """
-    # For every chunk, calculate the start and end indices and return the chunk
-    k, m = divmod(len(lst), n)
-    return (lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
-
     
 def stitch_files(no: int):
     """
@@ -249,21 +264,6 @@ def stitch_files(no: int):
 
     all_nodes.to_csv('../out/nodes/nodes_all_stitched.csv', sep=',', index=False)
     all_edges.to_csv('../out/edges/edges_all_stitched.csv', sep=',', index=False)
-
-
-def track_exec_time(total: float, results):
-    """
-    A method to track execution time to test processing improvements.
-
-    :param total: Overall execution time of program
-    :param results: List of execution times of individual workers
-    """
-    with open('../out/exec_time.csv', 'w') as f:
-            f.write('Worker,Time in Seconds\n')
-            for i in results:
-                print(f'[{Colors.SUCCESS}✓{Colors.RESET}] Worker {i[0]} completed in {i[1]:.3f}s')
-                f.write(f'{i[0]},{i[1]:.3f}\n')
-            f.write(f'Total,{total:.3f}\n')
 
 
 # SOLVED: Make Graph undirect. Average the weight of both edges and compress to positive range -> Leave directed, only transform

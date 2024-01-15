@@ -1,6 +1,8 @@
 import os
 import filters
 import pandas as pd
+import networkx as nx
+import community as cl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -54,6 +56,66 @@ def plot_daily_tone(events, actors=(), time_range=0, write=False):
         plt.show()
 
 
+def modularity(nodes: pd.DataFrame, edges: pd.DataFrame, resolution=1.0):
+    """
+    Compute the modularity classes for the given graph using
+    edge weights and store the result to the nodes files.
+
+    :param nodes: A list of nodes in the graph
+    :param edges: A list of edges in the graph
+    :param resolution: Determines the size of communities
+    """
+    # Generate graph from edge list
+    graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='Weight')
+    
+    # Calculate Closeness Centrality and create DataFrame
+    communities = cl.best_partition(graph, weight='Weight', resolution=resolution)
+    classes = pd.DataFrame(list(communities.items()), columns=['ID', 'Modularity Class'])
+
+    # Merge results with list of nodes and write to orginal file
+    nodes = pd.merge(nodes, classes, on='ID', how='left')
+    nodes.to_csv('../out/nodes/nodes_cc.csv', sep=',', index=False)
+
+
+def betweenness(nodes: pd.DataFrame, edges: pd.DataFrame):
+    """
+    Compute Betweenness Centrality for a given edge list using
+    edge weights as the distance of a path.
+
+    :param nodes: A list of nodes in the graph
+    :param edges: A list of edges in the graph
+    """
+    # Generate graph from edge list
+    graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='Weight')
+    
+    # Calculate Betweenness Centrality and create DataFrame
+    cc = nx.betweenness_centrality(graph, weight='weight', normalized=True)
+    cc_df = pd.DataFrame(list(cc.items()), columns=['ID', 'Betweenness Centrality'])
+
+    # Merge results with list of nodes and write to orginal file
+    nodes = pd.merge(nodes, cc_df, on='ID', how='left')
+    nodes.to_csv('../out/nodes/nodes_cc.csv', sep=',', index=False)
+
+
+def closeness(nodes: pd.DataFrame, edges: pd.DataFrame):
+    """
+    Compute Closeness Centrality for a given edge list using
+    edge weights as the distance of a path.
+
+    :param nodes: A list of nodes in the graph
+    :param edges: A list of edges in the graph
+    """
+    # Generate graph from edge list
+    graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='Weight')
+    
+    # Calculate Closeness Centrality and create DataFrame
+    cc = nx.closeness_centrality(graph, distance='weight')
+    cc_df = pd.DataFrame(list(cc.items()), columns=['ID', 'Closeness Centrality'])
+
+    # Merge results with list of nodes and write to orginal file
+    nodes = pd.merge(nodes, cc_df, on='ID', how='left')
+    nodes.to_csv('../out/nodes/nodes_cc.csv', sep=',', index=False)
+
 if __name__ == '__main__':
     events = pd.DataFrame(columns=['GLOBALEVENTID', 'SQLDATE', 'Actor1Code', 'Actor1Name', 
                                    'Actor1CountryCode', 'Actor1Type1Code', 'Actor1Type2Code', 
@@ -61,9 +123,13 @@ if __name__ == '__main__':
                                    'Actor2Type1Code', 'EventCode', 'EventBaseCode', 'GoldsteinScale', 
                                    'NumMentions', 'AvgTone', 'SOURCEURL'])
     
-    files = os.listdir(PATH)
-    for i, file in enumerate(files):
-        event = pd.read_csv(PATH + file)
-        events = pd.concat([events, event], ignore_index=True) if i > 0 else event
+    # files = os.listdir(PATH)
+    # for i, file in enumerate(files):
+    #     event = pd.read_csv(PATH + file)
+    #     events = pd.concat([events, event], ignore_index=True) if i > 0 else event
 
-    plot_daily_tone(events, actors=('ISR', 'PSE'), write=True)
+    # plot_daily_tone(events, actors=('ISR', 'PSE'), write=True)
+    edges = pd.read_csv('../out/edges/edges_all_undirected.csv')
+    nodes = pd.read_csv('../out/nodes/nodes_all_stitched.csv')
+    bridge(nodes, edges)
+    modularity(nodes, edges, resolution=1.0)
