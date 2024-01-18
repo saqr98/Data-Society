@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 
-PATH = '../data/raw'
+PATH = '../data/raw/'
 
 def plot_daily_tone(events, actors=(), time_range=0, write=False):
     """
@@ -24,9 +24,12 @@ def plot_daily_tone(events, actors=(), time_range=0, write=False):
     filtered_events['SQLDATE'] = pd.to_datetime(filtered_events['SQLDATE'], format='%Y%m%d')
 
     # Calculate average per group, then between the two groups
+    print(filtered_events.dropna(axis=0, subset='SOURCEURL').groupby(['SQLDATE', 'Actor1CountryCode']).agg({'AvgTone': 'mean', 'SOURCEURL': lambda x: ", ".join(x)}))
     average_tone = filtered_events.groupby(['SQLDATE', 'Actor1CountryCode'])['AvgTone'].mean().reset_index()
-    average_tone['AvgTone'] = average_tone['AvgTone'].round(3)
 
+    #print(average_tone)
+    average_tone['AvgTone'] = average_tone['AvgTone'].round(3)
+    #print(average_tone)
     # Make plot
     plt.figure(figsize=(12, 6))
     # ActorA to ActorB
@@ -123,13 +126,13 @@ if __name__ == '__main__':
                                    'Actor2Type1Code', 'EventCode', 'EventBaseCode', 'GoldsteinScale', 
                                    'NumMentions', 'AvgTone', 'SOURCEURL'])
     
-    # files = os.listdir(PATH)
-    # for i, file in enumerate(files):
-    #     event = pd.read_csv(PATH + file)
-    #     events = pd.concat([events, event], ignore_index=True) if i > 0 else event
+    files = os.listdir(PATH)
+    for i, file in enumerate(files):
+        event = pd.read_csv(PATH + file)
+        events = pd.concat([events, event], ignore_index=True) if i > 0 else event
 
-    # plot_daily_tone(events, actors=('ISR', 'PSE'), write=True)
-    edges = pd.read_csv('../out/edges/edges_all_undirected.csv')
-    nodes = pd.read_csv('../out/nodes/nodes_all_stitched.csv')
-    bridge(nodes, edges)
-    modularity(nodes, edges, resolution=1.0)
+    plot_daily_tone(events, actors=('ISR', 'PSE'), write=False)
+    # edges = pd.read_csv('../out/edges/edges_all_undirected.csv')
+    # nodes = pd.read_csv('../out/nodes/nodes_all_stitched.csv')
+    # bridge(nodes, edges)
+    # modularity(nodes, edges, resolution=1.0)
