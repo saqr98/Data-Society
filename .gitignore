@@ -23,4 +23,5 @@ Code/data/*.csv
 Code/data/raw/
 Code/out/tones/
 
+Code/src/__pycache__/
 # !Code/data
