@@ -49,7 +49,8 @@ def compress_goldstein(x: int, a=-10, b=10, c=0, d=1) -> int:
     :param d: New range upper-bound
     :return: Inverted value compressed to new range
     """
-    return d - ((x - a) * (d - c) / (b - a) + c)
+    # d - ((x - a) * (d - c) / (b - a) + c)
+    return ((x - a) * (d - c) / (b - a) + c)
 
 
 def calculate_weight(goldstein: int, tone: int) -> int:
@@ -73,9 +74,68 @@ def clean_countries(countries: set) -> set:
     return res
 
 
+def track_exec_time(total: float, results):
+    """
+    A method to track execution time to test processing improvements.
+
+    :param total: Overall execution time of program
+    :param results: List of execution times of individual workers
+    """
+    with open('../out/exec_time.csv', 'w') as f:
+            f.write('Worker,Time in Seconds\n')
+            for i in results:
+                print(f'[{Colors.SUCCESS}✓{Colors.RESET}] Worker {i[0]} completed in {i[1]:.3f}s')
+                f.write(f'{i[0]},{i[1]:.3f}\n')
+            f.write(f'Total,{total:.3f}\n')
+  
+
+def split_into_chunks(lst: list, n: int) -> []:
+    """
+    Splits a list into n nearly equal chunks.
+    Necessary to support multiprocessing.
+
+    :param lst: List to split
+    :param n: Number of chunks to split into
+    """
+    # For every chunk, calculate the start and end indices and return the chunk
+    k, m = divmod(len(lst), n)
+    return (lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+
+
+def transform_undirected():
+    """
+    Transform directed edges into undirected edges and use
+    the average weight of the directed edges as the new weight
+    for the undirectional edge.
+
+    Write the results to a separate file.
+    """
+    events = pd.read_csv('../out/edges/edges_all_stitched.csv')
+    events['CodePairs'] = list(zip(events['Source'], events['Target']))
+    pairs = set(events['CodePairs'].unique())
+    
+    edges = pd.DataFrame(columns=['Source', 'Target', 'Weight', 'Type'])
+    visited = set()
+    for pair in pairs:
+        if pair in visited or pair[::-1] in visited:
+            continue
+
+        visited.add(pair)
+        visited.add(pair[::-1])
+
+        filtered_events = events[(events['CodePairs'] == pair) | (events['CodePairs'] == pair[::-1])]
+        average_sentiment = filtered_events['Weight'].mean()
+
+        edge = pd.DataFrame([{'Source': pair[0], 'Target': pair[1], 'Weight': average_sentiment, 'Type': 'undirected'}])
+        edges = pd.concat([edges, edge], ignore_index=True)
+
+    edges.to_csv('../out/edges/edges_all_undirected.csv', sep=',', index=False)
+    
+
 def extract_events(arg: []):
     start = time.perf_counter()
     i, events, pairs = arg[0], arg[1], arg[2]
+    events = arg[1].groupby(by=['SQLDATE']) if arg[1] is not None else arg[1]
     print(f'[{Colors.WARNING}-{Colors.RESET}] Started Worker {i}')
 
     nodes = pd.DataFrame(columns=['ID', 'Label', 'ISO', 'Latitude', 'Longitude'])
@@ -86,12 +146,14 @@ def extract_events(arg: []):
             continue
         
         # Extract unilateral events per country
-        filtered_events = events[(events['Actor1CountryCode'] == source) & (events['Actor2CountryCode'] == target)]
+        # events[(events['Actor1CountryCode'] == source) & (events['Actor2CountryCode'] == target)]
+        filtered_events = events[(events['CountryPairs'] == pair) | (events['CountryPairs'] == pair[::-1])]
         if filtered_events is None:
             continue
 
         # Average weights of all events
         average_sentiment = filtered_events['Weight'].mean()
+        average_sentiment = average_sentiment.mean()        
 
         # Prepare Data Entries
         source_row = COUNTRYCODES[(COUNTRYCODES['ISO-alpha3 code'] == source)]
@@ -118,14 +180,27 @@ def extract_events(arg: []):
     return (i, total)
 
 
-def preprocess() -> ():
+def preprocess(files: [], dynamic=False) -> ():
     """
-    Preprocess Events file. Calucate weight per event, retrieve 
+    Preprocess files containing event data. Calculate weight per event, retrieve 
     participating countries and create all permutations for list of all 
     countries with potential interactions.
+
+    :param files: A list of file paths for files to read
+    :param dynamic: Make events a time-based dynamic network
     """
     # Read Events and filter out non-country events
-    events = pd.read_csv('../data/20231011_All.csv')
+    events = pd.DataFrame(columns=['GLOBALEVENTID', 'SQLDATE', 'Actor1Code', 'Actor1Name', 
+                                   'Actor1CountryCode', 'Actor1Type1Code', 'Actor1Type2Code', 
+                                   'Actor2Code', 'Actor2Name', 'Actor2CountryCode', 'Actor2Type1Code', 
+                                   'Actor2Type1Code', 'EventCode', 'EventBaseCode', 'GoldsteinScale', 
+                                   'NumMentions', 'AvgTone', 'SOURCEURL'])
+    i = 0
+    for file in files:
+        event = pd.read_csv(file)
+        events = pd.concat([events, event], ignore_index=True) if i > 0 else event
+        print(len(events))
+        i += 1
     events = events[(events["Actor1CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"])) & 
                     (events["Actor2CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"]))]
 
@@ -139,7 +214,7 @@ def preprocess() -> ():
     # TODO: Play around with weight range to increase repulsion
     current_upper = math.ceil(events["Weight"].max())
     current_lower = math.floor(events["Weight"].min())
-    events["Weight"] = events["Weight"].apply(lambda x: compress_goldstein(x, a=current_lower, b=current_upper, c=0, d=10))
+    events["Weight"] = events["Weight"].apply(lambda x: compress_goldstein(x, a=current_lower, b=current_upper, c=0, d=100))
 
     # Create column w/ country-pairs from existing entries
     events['CountryPairs'] = list(zip(events['Actor1CountryCode'], events['Actor2CountryCode']))
@@ -154,20 +229,11 @@ def preprocess() -> ():
     # Reduce set of pairs to only those that exist in the DataFrame
     true_pairs = pairs.intersection(set(events['CountryPairs'].unique()))
     
-    return events, true_pairs
-
-
-def split_into_chunks(lst: list, n: int) -> []:
-    """
-    Splits a list into n nearly equal chunks. 
-    Necessary to support multiprocessing.
-
-    :param lst: List to split
-    :param n: Number of chunks to split into
-    """
-    # For every chunk, calculate the start and end indices and return the chunk
-    k, m = divmod(len(lst), n)
-    return (lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+    if dynamic:
+        events['SQLDATE'] = pd.to_datetime(events['SQLDATE'], format='%Y%m%d')
+        return events.groupby(by=['SQLDATE']), true_pairs, events['SQLDATE'].unique()
+    
+    return events, true_pairs, None
 
     
 def stitch_files(no: int):
@@ -200,39 +266,29 @@ def stitch_files(no: int):
     all_edges.to_csv('../out/edges/edges_all_stitched.csv', sep=',', index=False)
 
 
-def track_exec_time(total: float, results):
-    """
-    A method to track execution time to test processing improvements.
-
-    :param total: Overall execution time of program
-    :param results: List of execution times of individual workers
-    """
-    with open('../out/exec_time.csv', 'w') as f:
-            f.write('Worker,Time in Seconds\n')
-            for i in results:
-                print(f'[{Colors.SUCCESS}✓{Colors.RESET}] Worker {i[0]} completed in {i[1]:.3f}s')
-                f.write(f'{i[0]},{i[1]:.3f}\n')
-            f.write(f'Total,{total:.3f}\n')
-
-
 # SOLVED: Make Graph undirect. Average the weight of both edges and compress to positive range -> Leave directed, only transform
 # SOLVED? Split by time to make dynamic -> Use filters.py
 # SOLVED? Figure out how to process larger datasets
 if __name__ == '__main__':
     start = time.perf_counter()
     print(f'[{Colors.BLUE}*{Colors.RESET}] Start Processing...')
-  
+    
     # Change track=True, for logging of execution time of workers
     track = True
+    dynamic = False
+    undirected = True
 
     # Preprocess data
-    events, pairs = preprocess()
+    files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
+    events, pairs, dates = preprocess(files, dynamic=dynamic)
+    print(events)
 
     # Split list of pairs into chunks, where no. of chunks == no. cores
     # and prepare arguments filtered on chunks for workers
-    n_chunks = 12 
-    chunks = list(split_into_chunks(list(pairs), n_chunks))
-    args = [(i, events[events['CountryPairs'].isin(chunk)], chunk) for i, chunk in enumerate(chunks)]
+    n_chunks = 12
+    col = 'SQLDATE' if dynamic else 'CountryPairs'
+    chunks = list(split_into_chunks(list(dates), n_chunks)) if dynamic else list(split_into_chunks(list(pairs), n_chunks))
+    args = [(i, events[events[col].isin(chunk)], chunk) for i, chunk in enumerate(chunks)]
     print(f'[{Colors.SUCCESS}✓{Colors.RESET}] Preprocessing completed.')
 
     # Concurrently process each chunk
@@ -244,8 +300,11 @@ if __name__ == '__main__':
     print(f'[{Colors.BLUE}+{Colors.RESET}] Merge Results')
     stitch_files(n_chunks)
 
+    if undirected:
+        print(f'[{Colors.BLUE}*{Colors.RESET}] Transform edges to be undirected')
+        transform_undirected()
+
     total = time.perf_counter() - start
-    print(type(total), type(results))
     if track: 
         track_exec_time(total, results)
 

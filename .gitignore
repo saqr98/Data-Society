@@ -4,6 +4,9 @@
 # Ignore .DS_Store
 .DS_Store
 
+# Ignore pycache
+__pycache__
+
 # Except these files
 !.gitignore
 !.gitattributes
@@ -17,5 +20,8 @@
 !Code/
 Code/data/helper/
 Code/data/*.csv
+Code/data/raw/
+Code/out/tones/
+
 Code/src/__pycache__/
 # !Code/data
