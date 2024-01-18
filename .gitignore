@@ -17,4 +17,5 @@
 !Code/
 Code/data/helper/
 Code/data/*.csv
+Code/src/__pycache__/
 # !Code/data
