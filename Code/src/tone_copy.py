@@ -8,17 +8,6 @@ import concurrent.futures as cf
 
 from helper import *
 from filters import group_date
-from preprocess import dynamic, static
-    
-
-def tone(events: pd.DataFrame, dynam=False) -> pd.DataFrame:
-    if dynam:
-        events = dynamic(events=events)
-    else:
-        events = static(events=events)
-    events = events.apply(lambda x: calculate_weight(x))
-    return events
-
 
 def extract_static_events(arg: []):
     start = time.perf_counter()
@@ -97,10 +86,6 @@ def extract_dynamic_events(arg: []):
         # edge = pd.DataFrame([{'Source': src_id, 'Target': trgt_id, 'Weight': events[events['CountryPairs'] == pair], 'Type': 'directed', }])
 
 
-def test(x):
-    x['Weight'] = x['GoldsteinScale'] * x['AvgTone']
-    return x
-
 def preprocess(files: [], dynamic=False) -> ():
     """
     Preprocess files containing event data. Calculate weight per event, retrieve 
@@ -117,19 +102,10 @@ def preprocess(files: [], dynamic=False) -> ():
 
     # TODO: Verify whether sorting upfront decreases execution time
     # events = events.sort_values(by=['GLOBALEVENTID'], axis=0, ascending=True)
-    
-    # Create column w/ country-pairs from existing entries
-    events['CountryPairs'] = list(zip(events['Actor1CountryCode'], events['Actor2CountryCode']))
-    events = events.groupby(['SQLDATE', 'CountryPairs'])
-    print(events.head(100))
-    # events = events.groupby(['SQLDATE', 'CountryPairs']).apply(lambda x: test(x))
-    print(type(events))
-    return
+
     # Compute weights per event
     # TODO: Include number of mentions of an event as indicator for its significance
-    events = events.groupby(by=['CountryPairs']).agg({'Weight': calculate_weight})
-    print(events)
-    events['Weight'] = calculate_weight()
+    events['Weight'] = calculate_weight(events['GoldsteinScale', 'AvgTone'])
 
     # And transform weights into positive weights in range [0, 10]
     # TODO: Play around with weight range to increase repulsion
@@ -137,8 +113,9 @@ def preprocess(files: [], dynamic=False) -> ():
     current_lower = math.floor(events["Weight"].min())
     events["Weight"] = events["Weight"].apply(lambda x: linear_transform(x, a=current_lower, b=current_upper, c=0, d=100))
 
-    
-    
+    # Create column w/ country-pairs from existing entries
+    events['CountryPairs'] = list(zip(events['Actor1CountryCode'], events['Actor2CountryCode']))
+
     # Extract unique Actor1-CountryCodes
     countries = set(events['Actor1CountryCode'].unique())
     countries = clean_countries(countries)
@@ -155,18 +132,6 @@ def preprocess(files: [], dynamic=False) -> ():
     return events, true_pairs, None
 
 
-def calculat_weight(goldstein: int, tone: int) -> int:
-    """
-    Calculate the weight of an event using its originally
-    assigned but compressed Goldstein value and extracted
-    average tone.
-
-    :param goldstein: Goldstein value of current event
-    :param tone: Average tone of current event
-    :return: Final weight of event
-    """
-    return linear_transform(goldstein) * linear_transform(tone, a=-100, b=100, c=0, d=1)
-
 # SOLVED: Make Graph undirect. Average the weight of both edges and compress to positive range -> Leave directed, only transform
 # SOLVED? Split by time to make dynamic -> Use filters.py
 # SOLVED? Figure out how to process larger datasets
@@ -180,37 +145,16 @@ if __name__ == '__main__':
     undirected = True
 
     # Preprocess data
-    files = ['../data/raw/20231011_All.csv'] #, '../data/raw/20230912202401_All.csv']
+    files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
     events = merge_files_read(files=files)
-    events = events[(events["Actor1CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"])) &
-                    (events["Actor2CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"]))]
-    events['CountryPairs'] = list(zip(events['Actor1CountryCode'], events['Actor2CountryCode']))
-
-    evt = events.copy(deep=True)
-    evt['Weight'] = calculat_weight(evt['GoldsteinScale'], evt['AvgTone'])
-    print(f'HERE: {evt}')
-    print(f"GROUPED: {events.groupby(by=['CountryPairs']).apply(calculate_weight, df=events)}")
-    # events = tone(events=events.head(100))
-    # print(events)
-    #print(events.head(100))
-    #events, pairs, dates = preprocess(files, dynamic=dynamic)
+    events, pairs, dates = preprocess(files, dynamic=dynamic)
 
     # Split list of pairs into chunks, where no. of chunks == no. cores
     # and prepare arguments filtered on chunks for workers
     n_chunks = 12
-    if dynamic:
-        chunks = list(split_into_chunks(list(dates), n_chunks))
-
-        # d = {date: group for date, group in events if date in chunks}
-        # print(d)
-        args = [(i, events[events['CountryPairs'].isin(chunk)], chunk) for i, chunk in enumerate(chunks)] # [(i, events[events['SQLDATE'].isin(chunk)], chunk) for i, chunk in enumerate(chunks)]
-    else:
-        chunks = list(split_into_chunks(list(pairs), n_chunks))
-        args = [(i, events[events['CountryPairs'].isin(chunk)], chunk) for i, chunk in enumerate(chunks)]
-    # col = 'SQLDATE' if dynamic else 'CountryPairs'
-    # chunks = list(split_into_chunks(list(dates), n_chunks)) if dynamic else list(split_into_chunks(list(pairs), n_chunks))
-    # args = [(i, events[events[col].isin(chunk)], chunk) for i, chunk in enumerate(chunks)]
-
+    col = 'SQLDATE' if dynamic else 'CountryPairs'
+    chunks = list(split_into_chunks(list(dates), n_chunks)) if dynamic else list(split_into_chunks(list(pairs), n_chunks))
+    args = [(i, events[events[col].isin(chunk)], chunk) for i, chunk in enumerate(chunks)]
 
     print(f'[{Colors.SUCCESS}✓{Colors.RESET}] Preprocessing completed.')
 
