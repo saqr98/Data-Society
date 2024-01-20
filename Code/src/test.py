@@ -10,10 +10,31 @@ def quadratic_transform(x: float, a=-10, b=10, c=0, d=1) -> int:
     return (((x - mid)**2) / ((b - a) / 2)**2) * (d - c) + c
 
 
+# Find the date of next occurrence for each value
+def find_next_date(group, current_date, value):
+    future_dates = group[(group.index > current_date) & (group['Value'] == value)].index
+    return future_dates.min() if not future_dates.empty else None
+
+
+
+
 if __name__ == '__main__':
-    x = 0.283019
-    y = quadratic_transform(x=-9)
-    print(y)
+
+
+    # Sample DataFrame
+    data = {
+        'Date': pd.date_range(start='2021-01-01', periods=20, freq='D'),
+        'Value': ['A', 'B', 'A', 'C', 'B', 'A', 'C', 'B', 'A', 'C', 'A', 'B', 'A', 'C', 'B', 'A', 'C', 'B', 'A', 'C']
+    }
+
+    df = pd.DataFrame(data)
+
+    # Group by day
+    grouped = df.groupby(pd.Grouper(key='Date', freq='D'))
+    # Apply the function to each row
+    df['Next_Occurrence'] = df.apply(lambda row: find_next_date(grouped.get_group(row['Date'].normalize()), row['Date'], row['Value']), axis=1)
+    print(df.head())
+    
     # codes = pd.read_csv('Project/Code/data/countrycodes copy.csv',on_bad_lines='skip')
     # longlat = pd.read_csv('Project/Code/data/countrylonglat.csv',on_bad_lines='skip')
 

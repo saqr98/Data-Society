@@ -59,4 +59,3 @@ def filter_weights(data: pd.DataFrame, range: ()) -> pd.DataFrame:
     """
     return data[(data['Weight'] >= range[0]) & data['Weight'] <= range[1]]
         
-
