@@ -34,11 +34,6 @@ def static(events: pd.DataFrame) -> pd.DataFrame:
     return events.groupby(by=['CountryPairs'])
 
 
-def coocurrence(events) -> pd.DataFrame:
-    # MOVE TO SEPARATE FILE
-    pass
-
-
 def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     """
     Creates a new column in the provided DataFrame containing 
@@ -54,14 +49,33 @@ def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     return events
 
 
-def make_undirected(events: pd.DataFrame) -> pd.DataFrame:
+def make_undirected(network_directed: pd.DataFrame) -> pd.DataFrame:
     """
-    A method to convert the network from an directed to an
+    A method to convert the network from a directed to an
     undirected network.
 
     :return: A DataFrame with undirected edges
     """
-    pass
+
+    network_directed["CountryPairs"] = network_directed["CountryPairs"]\
+        .apply(lambda x: ",".join(sorted(x.split(","))))
+
+    if "Timeset" in network_directed.columns:
+        grouped = network_directed.groupby(["Timeset", "CountryPairs"])
+    else:
+        grouped = network_directed.groupby(["CountryPairs"])
+
+    if "Count" in network_directed.columns:
+        # TODO: test tone average merging with 'Count'
+        network_undirected = grouped.apply(lambda s: pd.Series({
+            "Count": s["Count"].sum(),
+            "Weight": s["Count"] * s["Weight"].mean()
+        }))
+
+    else:
+        network_undirected = grouped["Weight"].sum().reset_index()
+    
+    return network_undirected
 
 
 def create_nodes():
