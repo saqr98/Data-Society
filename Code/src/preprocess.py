@@ -54,28 +54,69 @@ def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     return events
 
 
-def make_undirected(events: pd.DataFrame) -> pd.DataFrame:
+def create_pair(x):
+        return ','.join(x[['Source', 'Target']].sort_values().tolist())
+
+
+def create_undirected_edges(events: pd.DataFrame, n_type: int, dynam=False) -> None:
     """
     A method to convert the network from an directed to an
     undirected network.
 
     :return: A DataFrame with undirected edges
     """
-    pass
-
-
-def create_nodes():
-    pass
-
-
-def create_edges(events: pd.DataFrame, dynam=False):
-    edges = pd.DataFrame()
-    edges[['Source', 'Target']] = events["CountryPairs"].str.split(",", expand=True)
-    edges['Weight'] = events['Weight'].mean() # , 'Directed'
-    print(edges)
+    directed = pd.DataFrame()
+    undirected = pd.DataFrame()
 
     if dynam:
-        # TODO: To be verified
-        edges['Timeset'] = events['Time']
+        # Add dates if dyanmic network is wanted
+        directed['Timeset'] = events.reset_index()['SQLDATE']
 
-    edges.to_csv('../out/edges/edges_new.csv', sep=',', index=False)
+    directed['Type'], directed['Weight'] = 'Undirected', events.values
+    directed[['Source', 'Target']] = events.reset_index()['CountryPairs'].str.split(',', expand=True)
+    directed['CountryPairs'] = directed.apply(create_pair, axis=1)
+
+    if dynam:
+        grouped = directed.groupby(by=['Timeset', 'CountryPairs'])
+    else:
+        grouped = directed.groupby(by=['CountryPairs'])
+    
+    if n_type:
+        merged = grouped['Weight'].sum().sort_values(ascending=False)
+        undirected['count'] = merged.values
+        undirected['Weight'] = undirected['count'].apply(lambda x: x / undirected['count'].sum())
+    else:
+        merged = grouped['Weight'].mean().sort_values(ascending=False)
+        undirected['Weight'] = merged.values
+    
+    undirected.to_csv('../out/edges/edges_undirected.csv', sep=',', index=False)
+
+
+def create_nodes() -> None:
+    nodes = pd.read_csv('../data/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
+    nodes.rename(columns={'Country': 'Label', 'ISO-alpha3 code': 'ISO', 'Numeric code': 'ID', 
+                          'Latitude (average)': 'Latitude',  'Longitude (average)': 'Longitude'}, inplace=True)
+    nodes = nodes[['ID', 'Label', 'ISO', 'Latitude', 'Longitude']]
+    nodes.drop_duplicates(subset='ID', inplace=True)
+    nodes.to_csv('../out/nodes/nodes_new.csv', sep=',', index=False)
+
+
+def create_directed_edges(events: pd.DataFrame, dynam=False) -> None:
+    edges = pd.DataFrame()
+
+    if dynam:
+        # Add dates if dyanmic network is wanted
+        edges['Timeset'] = events.reset_index()['SQLDATE']
+
+    edges[['Source', 'Target']] = events.reset_index()['CountryPairs'].str.split(',', expand=True)
+    edges['Weight'], edges['Type'] = events.values, 'Directed'
+
+    if dynam:
+        # Reorder columns
+        edges = edges[['Source', 'Target', 'Weight', 'Timeset', 'Type']]
+    else:
+        # Reorder columns
+        edges = edges[['Source', 'Target', 'Weight', 'Type']]
+
+    edges.to_csv('../out/edges/edges_directed.csv', sep=',', index=False)
+

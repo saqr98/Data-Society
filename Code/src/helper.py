@@ -85,7 +85,7 @@ def stitch_files_write(no: int):
 # ---------------------------- PROCESSING ----------------------------
             
 # Mapping of Country Names to ISO Codes 
-COUNTRYCODES = pd.read_csv('../data/countrycodes_extended.csv', usecols=[0,1,2,3,4])
+COUNTRYCODES = pd.read_csv('../data/helper/countrycodes_extended.csv', usecols=[0,1,2,3,4])
 
 # Mapping taken from 'An Ordinal Latent Variable Model of Conflict Intensity'
 # URL: https://arxiv.org/pdf/2210.03971.pdf
@@ -124,22 +124,18 @@ def quadratic_transform(x: int, a=-10, b=10, c=0, d=1) -> int:
     return (((x - mid)**2) / ((b - a) / 2)**2) * (d - c) + c
 
 
-def calculate_weight(goldstein: int, tone: int) -> int:
+def calculate_weight(num_mentions: int, tone: int) -> int:
     """
     Calculate the weight of an event using its originally 
     assigned but compressed Goldstein value and extracted 
     average tone.
 
-    :param goldstein: Goldstein value of current event
+    :param num_mentions: The number of mentions of the current event
     :param tone: Average tone of current event
     :return: Final weight of event
     """
-    #print(slice.count())
-    """slice['Weight'] = slice['NumMentions'] \
-                       * linear_transform(slice['AvgTone'], a=-100, b=100, c=0, d=1)
-    slice['Weight'] = slice['Weight'].mean()"""
-
-    return goldstein * linear_transform(tone, a=-100, b=100, c=0, d=1)
+    # TODO: ADD TRNASFORMED GoldsteinScale!!!
+    return num_mentions * linear_transform(tone, a=-100, b=100, c=1, d=10)
 
 
 def clean_countries(countries: set) -> set:
