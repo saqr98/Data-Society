@@ -30,17 +30,24 @@ def tone(events: pd.DataFrame, dynam=False) -> pd.DataFrame:
     return events
 
 
-def calculat_weight(goldstein: int, tone: int) -> int:
+def create_ego_network(events: pd.DataFrame, actor: str, inflection: str, period: int):
     """
-    Calculate the weight of an event using its originally
-    assigned but compressed Goldstein value and extracted
-    average tone.
+    Create the Ego-network of an actor after an inflection point
+    in the tone between two actors has been identfied in the tone
+    analysis step. Retrieve the tone for that actor with all other
+    actors it engages with after the inflection point for a given
+    period and use the tone as the weight for their edge.
 
-    :param goldstein: Goldstein value of current event
-    :param tone: Average tone of current event
-    :return: Final weight of event
+    The analytical objective of this method is to measure global 
+    polarization in causal relation to the event that led to the
+    inflection point in the tone between two countries.
+
+    :param events: A DataFrame containing events
+    :param actor: The actor to create the Ego-network for
+    :param period: The number of days after the inflection point 
+    for which to calculate the average tone
     """
-    return linear_transform(goldstein) * linear_transform(tone, a=-100, b=100, c=0, d=1)
+    pass
 
 
 # SOLVED: Make Graph undirect. Average the weight of both edges and compress to positive range -> Leave directed, only transform

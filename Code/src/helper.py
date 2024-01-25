@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -99,15 +100,16 @@ CAMEO2CAT = {
 }
 
 
-def linear_transform(x: int, a=-10, b=10, c=0, d=1) -> int:
+def linear_transform(x: int, a=-10, b=10, c=1, d=2) -> int:
     """
-    Compress Goldstein values and average directed weights to a range 
-    predefined range [c,d] using linear transformation, s.t. more conflictual 
-    events are closer to d (upper-bound) whereas cooperative events are closer 
-    to c (lower-bound). 
+    Compress values predefined range [c,d] using linear transformation, 
+    s.t. more conflictual/negative events are closer to c (lower-bound) 
+    whereas cooperative/positive events are closer to d (upper-bound). 
 
-    This helps to use the Goldstein Scale as a penalty factor for the weight
-    of an event.
+    It takes the theoretical impact of an event (Goldstein value), the
+    number of mentions of that event and the average tone calculated for
+    that event into consideration for the calculation of the weight.
+    
     :param x: Value to be converted
     :param a: Initial range lower-bound
     :param b: Initial range upper-bound
@@ -115,16 +117,10 @@ def linear_transform(x: int, a=-10, b=10, c=0, d=1) -> int:
     :param d: New range upper-bound
     :return: Inverted value compressed to new range
     """
-    # d - ((x - a) * (d - c) / (b - a) + c)
     return ((x - a) * (d - c) / (b - a) + c)
 
 
-def quadratic_transform(x: int, a=-10, b=10, c=0, d=1) -> int:
-    mid = (a + b) / 2
-    return (((x - mid)**2) / ((b - a) / 2)**2) * (d - c) + c
-
-
-def calculate_weight(num_mentions: int, tone: int) -> int:
+def calculate_weight(num_mentions: int, goldstein: int, tone: int) -> int:
     """
     Calculate the weight of an event using its originally 
     assigned but compressed Goldstein value and extracted 
@@ -135,7 +131,7 @@ def calculate_weight(num_mentions: int, tone: int) -> int:
     :return: Final weight of event
     """
     # TODO: ADD TRNASFORMED GoldsteinScale!!!
-    return num_mentions * linear_transform(tone, a=-100, b=100, c=1, d=10)
+    return num_mentions * linear_transform(goldstein)* linear_transform(tone, a=-100, b=100, c=1, d=10)
 
 
 def clean_countries(countries: set) -> set:
@@ -187,3 +183,39 @@ def transform_undirected():
         edges = pd.concat([edges, edge], ignore_index=True)
 
     edges.to_csv('../out/edges/edges_all_undirected.csv', sep=',', index=False)
+
+
+# ---------------------------- ANALYSIS ----------------------------
+def get_inflections(tone: pd.DataFrame):
+    """
+    Retrieve inflection points for the tone between two
+    countries using the Z-score of the tones in the data.
+    
+    An inflection point may indicate that a significant event
+    has happened.
+
+    :param tone: A DataFrame containing the tones between two actors
+    """
+    idx = zscore(tone['AvgTone'])
+    return tone.iloc[idx]
+
+
+def zscore(tones: pd.Series):
+    """
+    Help identify anomalies in tone changes between the two
+    given countries. Allows for the identification of causal
+    events.
+
+    :param tones: A Series of temporally chronological tones between two countries
+    :return: The indeces of identified anomalies
+    """
+    mean_temperature = np.mean(tones)
+    std_temperature = np.std(tones)
+
+    # Calculate Z-scores for each temperature measurement
+    z_scores = (tones - mean_temperature) / std_temperature
+
+    # Identify anomalies as those with a Z-score exceeding a threshold
+    z_score_threshold = 3  # Commonly used threshold for outliers
+    anomalies = np.abs(z_scores) > z_score_threshold
+    return np.where(anomalies)[0]
