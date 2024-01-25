@@ -23,8 +23,9 @@ def plot_daily_tone(events, actors=(), time_range=0, write=False):
     filtered_events['SQLDATE'] = pd.to_datetime(filtered_events['SQLDATE'], format='%Y%m%d')
 
     # Calculate average per group, then between the two groups
-    print(filtered_events.dropna(axis=0, subset='SOURCEURL').groupby(['SQLDATE', 'Actor1CountryCode']).agg({'AvgTone': 'mean', 'SOURCEURL': lambda x: ", ".join(x)}))
+    # print(filtered_events.dropna(axis=0, subset='SOURCEURL').groupby(['SQLDATE', 'Actor1CountryCode']).agg({'AvgTone': 'mean', 'SOURCEURL': lambda x: ", ".join(x)}))
     average_tone = filtered_events.groupby(['SQLDATE', 'Actor1CountryCode'])['AvgTone'].mean().reset_index()
+    print(average_tone)
 
     #print(average_tone)
     average_tone['AvgTone'] = average_tone['AvgTone'].round(3)
@@ -111,12 +112,20 @@ def plot_daily_ton(events, actors=(), time_range=0, write=False):
         plt.show()
 
 
-def zscore(y):
-    mean_temperature = np.mean(y)
-    std_temperature = np.std(y)
+def zscore(tones: pd.Series):
+    """
+    Help identify anomalies in tone changes between the two
+    given countries. Allows for the identification of causal
+    events.
+
+    :param tones: A Series of temporally chronological tones between two countries
+    :return: The indeces of identified anomalies
+    """
+    mean_temperature = np.mean(tones)
+    std_temperature = np.std(tones)
 
     # Calculate Z-scores for each temperature measurement
-    z_scores = (y - mean_temperature) / std_temperature
+    z_scores = (tones - mean_temperature) / std_temperature
 
     # Identify anomalies as those with a Z-score exceeding a threshold
     z_score_threshold = 3  # Commonly used threshold for outliers

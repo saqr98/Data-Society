@@ -49,10 +49,6 @@ def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     return events
 
 
-def create_pair(x):
-        return ','.join(x[['Source', 'Target']].sort_values().tolist())
-
-
 def create_undirected_edges(network_directed: pd.DataFrame, n_type: int, dynam=False) -> None:
     """
     A method to convert the network from a directed to an
@@ -83,7 +79,12 @@ def create_undirected_edges(network_directed: pd.DataFrame, n_type: int, dynam=F
 
 
 def create_nodes():
-    pass
+    nodes = pd.read_csv('../data/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
+    nodes.rename(columns={'Country': 'Label', 'ISO-alpha3 code': 'ISO', 'Numeric code': 'ID', 
+                          'Latitude (average)': 'Latitude',  'Longitude (average)': 'Longitude'}, inplace=True)
+    nodes = nodes[['ID', 'Label', 'ISO', 'Latitude', 'Longitude']]
+    nodes.drop_duplicates(subset='ID', inplace=True)
+    nodes.to_csv('../out/nodes/nodes_new.csv', sep=',', index=False)
 
 
 def create_edges(events: pd.DataFrame, dynam=False):
