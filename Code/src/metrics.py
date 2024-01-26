@@ -43,7 +43,7 @@ def betweenness(nodes: pd.DataFrame, edges: pd.DataFrame):
     
     # Calculate Betweenness Centrality and create DataFrame
     bc = nx.betweenness_centrality(graph, weight='weight', normalized=True)
-    bc_df = pd.DataFrame(list(bc.items()), columns=['ID', 'Betweenness Centrality'])
+    bc_df = pd.DataFrame(list(bc.items()), columns=['ID', 'BetweennessCentrality'])
 
     # Merge results with list of nodes and write to orginal file
     nodes = pd.merge(nodes, bc_df, on='ID', how='left')
