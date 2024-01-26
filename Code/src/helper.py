@@ -120,7 +120,7 @@ def linear_transform(x: int, a=-10, b=10, c=1, d=2) -> int:
     return ((x - a) * (d - c) / (b - a) + c)
 
 
-def calculate_weight(num_mentions: int, goldstein: int, tone: int) -> int:
+def calculate_weight(num_mentions: int, tone: int) -> int:
     """
     Calculate the weight of an event using its originally 
     assigned but compressed Goldstein value and extracted 
@@ -130,8 +130,7 @@ def calculate_weight(num_mentions: int, goldstein: int, tone: int) -> int:
     :param tone: Average tone of current event
     :return: Final weight of event
     """
-    # TODO: ADD TRNASFORMED GoldsteinScale!!!
-    return num_mentions * linear_transform(goldstein)* linear_transform(tone, a=-100, b=100, c=1, d=10)
+    return num_mentions * linear_transform(tone, a=-100, b=100, c=1, d=10)
 
 
 def clean_countries(countries: set) -> set:
@@ -196,7 +195,7 @@ def get_inflections(tone: pd.DataFrame):
 
     :param tone: A DataFrame containing the tones between two actors
     """
-    idx = zscore(tone['AvgTone'])
+    idx = zscore(tone)
     return tone.iloc[idx]
 
 
@@ -209,11 +208,11 @@ def zscore(tones: pd.Series):
     :param tones: A Series of temporally chronological tones between two countries
     :return: The indeces of identified anomalies
     """
-    mean_temperature = np.mean(tones)
-    std_temperature = np.std(tones)
+    mean_tone = np.mean(tones)
+    std_tone = np.std(tones)
 
     # Calculate Z-scores for each temperature measurement
-    z_scores = (tones - mean_temperature) / std_temperature
+    z_scores = (tones - mean_tone) / std_tone
 
     # Identify anomalies as those with a Z-score exceeding a threshold
     z_score_threshold = 3  # Commonly used threshold for outliers

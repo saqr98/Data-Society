@@ -5,7 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-from helper import get_inflections
+from helper import get_inflections, calculate_weight
+from preprocess import dynamic
 
 PATH = '../data/raw/'
 
@@ -22,15 +23,20 @@ def plot_daily_tone(events, actors=(), time_range=0, write=False):
     """
     # Retrieve entries for specified countries
     filtered_events = filters.filter_actors(events, [actors[0], actors[1]], 'CountryCode')
+    filtered_events['Weight'] = calculate_weight(filtered_events['NumMentions'], filtered_events['GoldsteinScale'], filtered_events['AvgTone'])
+
     filtered_events['SQLDATE'] = pd.to_datetime(filtered_events['SQLDATE'], format='%Y%m%d')
 
     # Calculate average per group, then between the two groups
     # print(filtered_events.dropna(axis=0, subset='SOURCEURL').groupby(['SQLDATE', 'Actor1CountryCode']).agg({'AvgTone': 'mean', 'SOURCEURL': lambda x: ", ".join(x)}))
-    average_tone = filtered_events.groupby(['SQLDATE', 'Actor1CountryCode'])['AvgTone'].mean().reset_index()
-    average_tone['AvgTone'] = average_tone['AvgTone'].round(3)
+    average_tone = filtered_events.groupby(['SQLDATE', 'Actor1CountryCode'])['Weight'].mean().reset_index()
+    print(average_tone)
+    average_tone['Weight'] = average_tone['Weight'].round(3)
    
     # Get possible inflection points
-    inflection_points = get_inflections(average_tone['AvgTone'])
+    inflection_points = get_inflections(average_tone['Weight'])
+    print(f'Inflection Points: {inflection_points}')
+    return
 
     ''' TODO: We are making simplifying assumptions about how a relationship may get changed.
         For example, it may be changed solely due to an event happening between two actors, but

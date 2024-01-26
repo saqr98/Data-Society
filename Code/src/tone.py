@@ -7,7 +7,7 @@ import multiprocessing as mp
 import concurrent.futures as cf
 
 from helper import *
-from preprocess import dynamic, static, create_directed_edges, \
+from preprocess import dynamic, static, create_edges, \
                         create_undirected_edges, create_nodes
 
 
@@ -18,14 +18,16 @@ def tone(events: pd.DataFrame, dynam=False) -> pd.DataFrame:
     # Create static or dynamic network
     if dynam:
         events = dynamic(events=events)
+        print(events.tail(50))
     else:
         events = static(events=events)
     
     # Calculate the mean weight for each group
     mean_weight = events['Weight'].apply('mean')
-    create_nodes()
-    create_undirected_edges(mean_weight, n_type=0, dynam=dynam)
-    create_directed_edges(mean_weight, dynam=dynam)
+    print(mean_weight.head(50))
+    # create_nodes()
+    # create_undirected_edges(mean_weight, n_type=0, dynam=dynam)
+    # create_edges(mean_weight, dynam=dynam)
 
     return events
 
@@ -60,7 +62,7 @@ if __name__ == '__main__':
     # Preprocess data
     files = ['../data/raw/20231011_All.csv'] # , '../data/raw/20230912202401_All.csv']
     events = merge_files_read(files=files)
-    tone(events, dynam=False)
+    tone(events, dynam=True)
 
     # Split list of pairs into chunks, where no. of chunks == no. cores
     # and prepare arguments filtered on chunks for workers
