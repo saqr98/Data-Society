@@ -18,8 +18,8 @@ __pycache__
 
 # And this folder
 !Code/
-Code/data/helper/
-Code/data/*.csv
+# Code/data/helper/
+# Code/data/*.csv
 Code/data/raw/
 Code/out/tones/
 
