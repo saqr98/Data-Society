@@ -8,7 +8,7 @@ import concurrent.futures as cf
 
 from helper import *
 from preprocess import dynamic, static, create_directed_edges, \
-                        create_undirected_edges, create_nodes
+                        create_undirected_network, create_nodes
 
 
 def tone(events: pd.DataFrame, dynam=False) -> pd.DataFrame:
@@ -24,7 +24,7 @@ def tone(events: pd.DataFrame, dynam=False) -> pd.DataFrame:
     # Calculate the mean weight for each group
     mean_weight = events['Weight'].apply('mean')
     create_nodes()
-    create_undirected_edges(mean_weight, n_type=0, dynam=dynam)
+    create_undirected_network(mean_weight, n_type=0, dynam=dynam)
     create_directed_edges(mean_weight, dynam=dynam)
 
     return events
