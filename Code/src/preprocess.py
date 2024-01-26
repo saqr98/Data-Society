@@ -3,7 +3,7 @@ import pandas as pd
 from helper import COUNTRYCODES
 
 
-def dynamic(events: pd.DataFrame, freq='M'):
+def dynamic(events: pd.DataFrame, freq='D'):
     """
     Aids the creation of a dynamic network by grouping countries based
     on their entries for any given date in the data.
@@ -17,6 +17,14 @@ def dynamic(events: pd.DataFrame, freq='M'):
     
     # Remove non-country actors & create country pairs
     events = _clean_countrypairs(events)
+
+    if freq == "D":
+        # By default "SQLDATE" has daily granularity
+        pass
+    if freq == "M":
+        events.loc[:, "SQLDATE"] = events["SQLDATE"].dt.to_period("M")
+    if freq == "Y":
+        events["SQLDATE"] = events["SQLDATE"].dt.to_period("Y")
 
     return events.groupby(by=['SQLDATE', 'CountryPairs'])
 
@@ -49,7 +57,7 @@ def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     return events
 
 
-def create_undirected_edges(network_directed: pd.DataFrame, n_type: int, dynam=False) -> None:
+def create_undirected_network(network_directed: pd.DataFrame, n_type: int = 0, dynam=False) -> pd.DataFrame:
     """
     A method to convert the network from a directed to an
     undirected network.
@@ -69,7 +77,7 @@ def create_undirected_edges(network_directed: pd.DataFrame, n_type: int, dynam=F
         # TODO: test tone average merging with 'Count'
         network_undirected = grouped.apply(lambda s: pd.Series({
             "Count": s["Count"].sum(),
-            "Weight": s["Count"] * s["Weight"].mean()
+            "Weight": (s["Count"] * s["Weight"]).mean()
         }))
 
     else:
@@ -84,10 +92,12 @@ def create_nodes():
                           'Latitude (average)': 'Latitude',  'Longitude (average)': 'Longitude'}, inplace=True)
     nodes = nodes[['ID', 'Label', 'ISO', 'Latitude', 'Longitude']]
     nodes.drop_duplicates(subset='ID', inplace=True)
-    nodes.to_csv('../out/nodes/nodes_new.csv', sep=',', index=False)
+    # nodes.to_csv('../out/nodes/nodes_new.csv', sep=',', index=False)
 
+    return nodes
 
-def create_edges(events: pd.DataFrame, dynam=False):
+'''
+def create_edges(events: pd.DataFrame, dynam=False, to_csv=False):
     edges = pd.DataFrame()
 
     if dynam:
@@ -104,5 +114,20 @@ def create_edges(events: pd.DataFrame, dynam=False):
         # Reorder columns
         edges = edges[['Source', 'Target', 'Weight', 'Type']]
 
-    edges.to_csv('../out/edges/edges_directed.csv', sep=',', index=False)
+    if to_csv:
+        edges.to_csv('../out/edges/edges_directed.csv', sep=',', index=False)
+        
+    return edges
+'''
+
+def create_edges(network: pd.DataFrame, type="Undirected"):
+    edges = pd.DataFrame()
+    edges[["Source", "Target"]] = network["CountryPairs"].str.split(",", expand=True)
+    edges["Weight"], edges["Type"] = network["Weight"], type
+
+    if "Timeset" in network.columns:
+        edges["Timeset"] = network["Timeset"]
+    
+    return edges
+
 
