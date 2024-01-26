@@ -1,10 +1,11 @@
 import pandas as pd
 
-from preprocess import dynamic, static, _clean_countrypairs, make_undirected
+from preprocess import *
+from metrics import *
 
 
 
-def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=False) -> pd.DataFrame:
+def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=False, freq="D") -> pd.DataFrame:
     """
     Calculates network edges based on the number of cooccurences of each unique pair
     of countries in 'events'. Note that the returned edges are for directed graph, e.g.
@@ -14,12 +15,15 @@ def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=Fals
     :param weight_by_num_mentions: Whether to weight edges by the number of mentions
         (see NumMentions feature of 'events')
     :param dynam: Whether to groupby event date and add timestamps to the edges
+    :param freq: Used only if `dynamic'=True.
+        Sets time granularity of the dynamic network: "D" is daily, "M" is monthly, "Y" is yearly.
+
     :return: Returns a DataFrame of country pairs and corresponding edges
     """
 
     # Create static or dynamic network
     if dynam:
-        events = dynamic(events=events)
+        events = dynamic(events=events, freq=freq)
     else:
         events = static(events=events)
 
@@ -56,11 +60,14 @@ if __name__ == '__main__':
     events = pd.read_csv("../data/all-events-autumn-2023.csv", dtype={"EventCode": 'str',
                                                                    "EventBaseCode": 'str',})
     
-    cooccurences_network = cooccurrences(events, weight_by_num_mentions=True, dynam=True)
-    undirected_network = make_undirected(cooccurences_network)
+    cooccurences_network = cooccurrences(events, weight_by_num_mentions=True, dynam=True, freq="D")
+    undirected_network = create_undirected_network(cooccurences_network)
+    edges = create_edges(undirected_network)
+    #nodes = create_nodes()
 
-    print(undirected_network.head(10))
-    print(undirected_network["CountryPairs"].nunique())
+    #print(edges.head(10))
+    #print(edges[(edges.Timeset == "2023-10-03") & (edges.Source == "ISR")].shape)
     
-    
-    #cooccurrences(data)
+    # Calculate some analysis
+    #nodes_betweenness = betweenness(nodes, edges)
+    #print(nodes_betweenness.sort_values(by="BetweennessCentrality", ascending=False).head(10))
