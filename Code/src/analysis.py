@@ -36,7 +36,6 @@ def plot_daily_tone(events, actors=(), time_range=0, write=False):
     # Get possible inflection points
     inflection_points = get_inflections(average_tone['Weight'])
     print(f'Inflection Points: {inflection_points}')
-    return
 
     ''' TODO: We are making simplifying assumptions about how a relationship may get changed.
         For example, it may be changed solely due to an event happening between two actors, but
@@ -74,6 +73,10 @@ def plot_daily_tone(events, actors=(), time_range=0, write=False):
         plt.savefig(f'../out/tones/plots/tone_{actors[0]}_{actors[1]}.png')
     else:
         plt.show()
+
+
+def get_other_actors(events: pd.DataFrame, inflection_date: int):
+    pass
 
 
 def covtone(events: pd.DataFrame, actors: [], period: int):

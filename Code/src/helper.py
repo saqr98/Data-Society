@@ -47,7 +47,7 @@ def merge_files_read(files: []) -> pd.DataFrame:
 
     i = 0
     for file in files:
-        event = pd.read_csv(file)
+        event = pd.read_csv(file, dtype={"EventCode": 'str',"EventBaseCode": 'str'})
         events = pd.concat([events, event], ignore_index=True) if i > 0 else event
         i += 1
     return events

@@ -3,7 +3,7 @@ import networkx as nx
 import community as cl
 
 
-OUT = '../out/nodes/nodes_all_stitched.csv'
+OUT = '../out/nodes/nodes.csv'
 
 
 def modularity(nodes: pd.DataFrame, edges: pd.DataFrame, resolution=1.0):
@@ -18,7 +18,7 @@ def modularity(nodes: pd.DataFrame, edges: pd.DataFrame, resolution=1.0):
     # Generate graph from edge list
     graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='Weight')
     
-    # Calculate Closeness Centrality and create DataFrame
+    # Calculate modularity classes and create DataFrame
     communities = cl.best_partition(graph, weight='Weight', resolution=resolution)
     classes = pd.DataFrame(list(communities.items()), columns=['ID', 'Modularity Class'])
     m_score = cl.modularity(communities, graph, weight='Weight')
@@ -43,7 +43,7 @@ def betweenness(nodes: pd.DataFrame, edges: pd.DataFrame):
     
     # Calculate Betweenness Centrality and create DataFrame
     bc = nx.betweenness_centrality(graph, weight='weight', normalized=True)
-    bc_df = pd.DataFrame(list(bc.items()), columns=['ID', 'BetweennessCentrality'])
+    bc_df = pd.DataFrame(list(bc.items()), columns=['ID', 'Betweenness Centrality'])
 
     # Merge results with list of nodes and write to orginal file
     nodes = pd.merge(nodes, bc_df, on='ID', how='left')
@@ -86,8 +86,8 @@ def eigenvector(nodes: pd.DataFrame, edges: pd.DataFrame):
 
 
 if __name__ == '__main__':
-    edges = pd.read_csv('../out/edges/edges_all_undirected.csv')
-    nodes = pd.read_csv('../out/nodes/nodes_all_stitched.csv')
+    edges = pd.read_csv('../out/edges/edges_undirected.csv')
+    nodes = pd.read_csv('../out/nodes/nodes.csv')
 
     # Compute centrality metrics
     nodes = closeness(nodes, edges)

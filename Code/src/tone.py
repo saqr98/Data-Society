@@ -7,28 +7,30 @@ import multiprocessing as mp
 import concurrent.futures as cf
 
 from helper import *
-from preprocess import dynamic, static, create_directed_edges, \
+from preprocess import dynamic, static, create_edges, \
                         create_undirected_network, create_nodes
 
 
-def tone(events: pd.DataFrame, dynam=False) -> pd.DataFrame:
+def tone(events: pd.DataFrame, dynam=False, freq='D') -> pd.DataFrame:
     # Calculate edge weights using no. of mentions and average tone of an event
     events['Weight'] = calculate_weight(events['NumMentions'], events['AvgTone'])
     
-    # Create static or dynamic network
+    # Create static or dynamic network & calculate mean weight for each group
     if dynam:
-        events = dynamic(events=events)
-        print(events.tail(50))
+        events = dynamic(events=events, freq=freq)
+        alt_events = events.agg(
+            Weight=('Weight', 'mean'), 
+            Count=('CountryPairs', 'count'),
+            # Events=('EventCode', ', '.join)
+        ).reset_index()
     else:
         events = static(events=events)
-    
-    # Calculate the mean weight for each group
-    mean_weight = events['Weight'].apply('mean')
-    create_nodes()
-    create_undirected_network(mean_weight, n_type=0, dynam=dynam)
-    create_directed_edges(mean_weight, dynam=dynam)
+        alt_events = events['Weight'].apply('mean').reset_index()
 
-    return events
+    # Uniform column names
+    col_names = {'SQLDATE': 'Timeset'}
+    alt_events.rename(columns=col_names, inplace=True)
+    return alt_events
 
 
 def create_ego_network(events: pd.DataFrame, actor: str, inflection: str, period: int):
@@ -59,9 +61,22 @@ if __name__ == '__main__':
     print(f'[{Colors.BLUE}*{Colors.RESET}] Start Processing...')
 
     # Preprocess data
-    files = ['../data/raw/20231011_All.csv'] # , '../data/raw/20230912202401_All.csv']
+    files = ['../data/raw/20231011_All.csv'] #, '../data/raw/20230912202401_All.csv']
     events = merge_files_read(files=files)
-    tone(events, dynam=True)
+    dir_ntwk = tone(events, dynam=False)
+    undir_ntwk = create_undirected_network(dir_ntwk)
+
+    # TODO: For some weird reason I have to reset the index here again
+    edges = create_edges(undir_ntwk.reset_index())
+    nodes = create_nodes(edges)
+
+    if 'Timeset' in edges.columns:
+        edges.to_csv('../out/edges/edges_undirected_dyn.csv', sep=',', index=False)
+        nodes.to_csv('../out/nodes/nodes_dyn.csv', sep=',', index=False)
+
+    else:
+        edges.to_csv('../out/edges/edges_undirected.csv', sep=',', index=False)
+        nodes.to_csv('../out/nodes/nodes.csv', sep=',', index=False)
 
     # Split list of pairs into chunks, where no. of chunks == no. cores
     # and prepare arguments filtered on chunks for workers
