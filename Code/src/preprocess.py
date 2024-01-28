@@ -57,7 +57,7 @@ def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     return events
 
 
-def create_undirected_network(network_directed: pd.DataFrame, n_type: int = 0, dynam=False) -> pd.DataFrame:
+def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:
     """
     A method to convert the network from a directed to an
     undirected network.
@@ -129,5 +129,4 @@ def create_edges(network: pd.DataFrame, type="Undirected"):
         edges["Timeset"] = network["Timeset"]
     
     return edges
-
 
