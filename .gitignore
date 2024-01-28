@@ -22,6 +22,6 @@ __pycache__
 # Code/data/*.csv
 Code/data/raw/
 Code/out/tones/
-
+Code/data/events/
 Code/src/__pycache__/
 # !Code/data
