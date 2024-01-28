@@ -61,9 +61,9 @@ if __name__ == '__main__':
     print(f'[{Colors.BLUE}*{Colors.RESET}] Start Processing...')
 
     # Preprocess data
-    files = ['../data/raw/20231011_All.csv'] #, '../data/raw/20230912202401_All.csv']
+    files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
     events = merge_files_read(files=files)
-    dir_ntwk = tone(events, dynam=False)
+    dir_ntwk = tone(events, dynam=True)
     undir_ntwk = create_undirected_network(dir_ntwk)
 
     # TODO: For some weird reason I have to reset the index here again

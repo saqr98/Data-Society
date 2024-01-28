@@ -19,21 +19,21 @@ def find_next_date(group, current_date, value):
 
 
 if __name__ == '__main__':
-
-
+    MEDIA_COUNTRY_MAPPING = pd.read_csv("../data/media-country_mapping.TXT", sep="\t", names=["Media", "CountryCodeShort", "CountryName"])
+    MEDIA_COUNTRY_MAPPING.to_csv('../data/media_country_mapping.csv', sep=',', index=False)
     # Sample DataFrame
-    data = {
-        'Date': pd.date_range(start='2021-01-01', periods=20, freq='D'),
-        'Value': ['A', 'B', 'A', 'C', 'B', 'A', 'C', 'B', 'A', 'C', 'A', 'B', 'A', 'C', 'B', 'A', 'C', 'B', 'A', 'C']
-    }
+    # data = {
+    #     'Date': pd.date_range(start='2021-01-01', periods=20, freq='D'),
+    #     'Value': ['A', 'B', 'A', 'C', 'B', 'A', 'C', 'B', 'A', 'C', 'A', 'B', 'A', 'C', 'B', 'A', 'C', 'B', 'A', 'C']
+    # }
 
-    df = pd.DataFrame(data)
+    # df = pd.DataFrame(data)
 
-    # Group by day
-    grouped = df.groupby(pd.Grouper(key='Date', freq='D'))
-    # Apply the function to each row
-    df['Next_Occurrence'] = df.apply(lambda row: find_next_date(grouped.get_group(row['Date'].normalize()), row['Date'], row['Value']), axis=1)
-    print(df.head())
+    # # Group by day
+    # grouped = df.groupby(pd.Grouper(key='Date', freq='D'))
+    # # Apply the function to each row
+    # df['Next_Occurrence'] = df.apply(lambda row: find_next_date(grouped.get_group(row['Date'].normalize()), row['Date'], row['Value']), axis=1)
+    # print(df.head())
     
     # codes = pd.read_csv('Project/Code/data/countrycodes copy.csv',on_bad_lines='skip')
     # longlat = pd.read_csv('Project/Code/data/countrylonglat.csv',on_bad_lines='skip')

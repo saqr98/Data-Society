@@ -27,7 +27,7 @@ def filter_event(data: pd.DataFrame, events: []) -> pd.DataFrame:
     return data[data['EventCode'].isin(events)]
 
 
-def filter_actors(data: pd.DataFrame, actors: [], atype: str) -> pd.DataFrame:
+def filter_actors(data: pd.DataFrame, actors: [], atype: []) -> pd.DataFrame:
     """
     Filter data by actors of different types. If only one actor is
     provided all entries in which it is Actor1 will be returned.
@@ -39,11 +39,11 @@ def filter_actors(data: pd.DataFrame, actors: [], atype: str) -> pd.DataFrame:
     :param atype: The type of the actors (CountryCode, Type1Code, Type2Code)
     """
     if len(actors) > 1:
-        data['CombinedActor'] = list(zip(data['Actor1' + atype], data['Actor2' + atype]))
+        data['CombinedActor'] = list(zip(data[atype[0]], data[atype[1]]))
         actor_pairs = set(itertools.permutations(actors, 2))
         return data[data['CombinedActor'].isin(actor_pairs)]
     elif len(actors) == 1:
-        return data[data['Actor1' + atype].isin(actors)]
+        return data[data[atype[0]].isin(actors)]
     else:
         return None
 

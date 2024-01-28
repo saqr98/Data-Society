@@ -89,12 +89,22 @@ def create_undirected_network(network_directed: pd.DataFrame, n_type: int = 0, d
 def create_nodes(edges: pd.DataFrame):
     # Load country meta-information
     n = pd.read_csv('../data/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
+    
+    # TODO: Create node file with timestamps for nodes
+    # if 'Timeset' in edges.columns:
+    #     edges = edges.groupby(by=['Timeset'])
+    #     s = edges['Source'].unique().tolist()
+    #     t = edges['Target'].unique().tolist()
+    #     print(s)
+    #     print(type(set(s)), t)
+    #     al = set(s + t)
+    #     print(al)
 
     # Retrieve meta-information for countries present in current network
     s = set(edges['Source'].values)
     al = s.union(set(edges['Target'].values))
     nodes = n[n['ISO-alpha3 code'].isin(al)]
-    
+
     # Rename & reorder columns , 'Numeric code': 'ID'
     col_names = {'Country': 'Label', 'ISO-alpha3 code': 'ID', 
                 'Latitude (average)': 'Latitude',  'Longitude (average)': 'Longitude'}
@@ -108,7 +118,6 @@ def create_nodes(edges: pd.DataFrame):
 
 def create_edges(network: pd.DataFrame, type="Undirected"):
     edges = pd.DataFrame()
-    print(network.head())
     edges[["Source", "Target"]] = network["CountryPairs"].str.split(",", expand=True)
     edges["Weight"], edges["Type"] = network["Weight"], type
 

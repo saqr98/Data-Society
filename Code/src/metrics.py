@@ -22,7 +22,7 @@ def modularity(nodes: pd.DataFrame, edges: pd.DataFrame, resolution=1.0):
     communities = cl.best_partition(graph, weight='Weight', resolution=resolution)
     classes = pd.DataFrame(list(communities.items()), columns=['ID', 'Modularity Class'])
     m_score = cl.modularity(communities, graph, weight='Weight')
-    print(m_score)
+    print(f'Calculated modularity score: {m_score}')
 
     # Merge results with list of nodes and write to orginal file
     nodes = pd.merge(nodes, classes, on='ID', how='left')
