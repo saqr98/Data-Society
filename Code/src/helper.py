@@ -48,7 +48,7 @@ def merge_files_read(files: []) -> pd.DataFrame:
 
     i = 0
     for file in files:
-        event = pd.read_csv(file, dtype={"EventCode": 'str',"EventBaseCode": 'str'})
+        event = pd.read_csv(file, parse_dates=['SQLDATE'], dtype={'EventCode': 'str', 'EventBaseCode': 'str'})
         events = pd.concat([events, event], ignore_index=True) if i > 0 else event
         i += 1
     return events
@@ -140,6 +140,21 @@ def clean_countries(countries: set) -> set:
         if country in COUNTRYCODES["ISO-alpha3 code"].values:
             res.add(country)
     return res
+
+
+def clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
+    """
+    Creates a new column in the provided DataFrame containing 
+    a tuple of countries for that entry. It also removes all
+    non-country actors.
+
+    :param events: A DataFrame containing events
+    :return: A cleaned DataFrame with a CountryPairs-column
+    """
+    events['CountryPairs'] = events['Actor1CountryCode'] + ',' + events['Actor2CountryCode']
+    events = events[(events["Actor1CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"])) & 
+                    (events["Actor2CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"]))]
+    return events
   
 
 def split_into_chunks(lst: list, n: int) -> []:
@@ -196,7 +211,7 @@ def get_inflections(tone: pd.Series, threshold=2):
 
     :param tone: A DataFrame containing the tones between two actors
     """
-    scores = zscore(tone, threshold=threshold)
+    scores = zscore(tone)
     # Identify anomalies as those with a Z-score exceeding a threshold
     anomalies = np.abs(scores) > threshold
     idx = np.where(anomalies)[0]
@@ -229,7 +244,7 @@ def normalize(data: pd.Series) -> pd.Series:
     return (data - data.min())/ (data.max() - data.min())
 
 
-def map_media_to_country_origin(df):
+def map_media_to_country_origin(df, media):
     """
     Maps entry of GDELT event table to the country where the media that wrote the article originates from
     and adds new column "CountryOrigin" to the dataframe.
@@ -247,7 +262,7 @@ def map_media_to_country_origin(df):
     temp = pd.DataFrame()
     temp.loc[:, "Media"] = df["SOURCEURL"].str.extract(regex).iloc[:, 1]
     temp = temp.merge(
-        MEDIA_COUNTRY_CODE_MAPPING[["Media", "CountryName", "CountryCode"]],
+        media[["Media", "CountryName", "CountryCode"]],
         how="left",
         on="Media"
     )

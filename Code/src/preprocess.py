@@ -1,6 +1,6 @@
 import time
 import pandas as pd
-from helper import COUNTRYCODES
+from helper import COUNTRYCODES, clean_countrypairs
 
 
 def dynamic(events: pd.DataFrame, freq='D'):
@@ -16,7 +16,7 @@ def dynamic(events: pd.DataFrame, freq='D'):
     events['SQLDATE'] = pd.to_datetime(events['SQLDATE'], format='%Y%m%d')
     
     # Remove non-country actors & create country pairs
-    events = _clean_countrypairs(events)
+    events = clean_countrypairs(events)
 
     if freq == "D":
         # By default "SQLDATE" has daily granularity
@@ -38,23 +38,8 @@ def static(events: pd.DataFrame) -> pd.DataFrame:
     :return: Returns a pandas GroupBy-object
     """
     # Remove non-country actors & create country pairs
-    events = _clean_countrypairs(events)
+    events = clean_countrypairs(events)
     return events.groupby(by=['CountryPairs'])
-
-
-def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
-    """
-    Creates a new column in the provided DataFrame containing 
-    a tuple of countries for that entry. It also removes all
-    non-country actors.
-
-    :param events: A DataFrame containing events
-    :return: A cleaned DataFrame with a CountryPairs-column
-    """
-    events['CountryPairs'] = events['Actor1CountryCode'] + ',' + events['Actor2CountryCode']
-    events = events[(events["Actor1CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"])) & 
-                    (events["Actor2CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"]))]
-    return events
 
 
 def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:

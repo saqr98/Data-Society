@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-from helper import get_inflections, calculate_weight, Colors, zscore, normalize
+from helper import get_inflections, calculate_weight, Colors, zscore, normalize, merge_files_read, clean_countrypairs
 from preprocess import dynamic
 
 PATH = '../data/raw/'
@@ -193,7 +193,7 @@ def covtone(tone: pd.DataFrame, cooc: pd.DataFrame, actors: [], period: int):
     plt.show()
     
 
-def media_polarization():
+def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
     """
     A method to plot polarization after a significant inflection
     point in the relation ship between two actors.
@@ -202,7 +202,9 @@ def media_polarization():
     as a measure of intensity as well as the tone to plot a third country's 
     position on the inflection point in two dimensions (co-occurrence vs. tone).
     """
-    pass
+    media = pd.read_csv('../data/media_country_code_mapping.csv')
+    filtered_events = events[(events['SQLDATE'] >= inflection_date)]
+    filtered_events = filtered_events[(filtered_events['CountryPairs'] == actors[0]) & ]
 
 
 if __name__ == '__main__':
@@ -218,12 +220,17 @@ if __name__ == '__main__':
     #     events = pd.concat([events, event], ignore_index=True) if i > 0 else event
 
     try:
+        files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
+        events = merge_files_read(files=files)
+        events = clean_countrypairs(events)
+
         tone = pd.read_csv('../out/edges/edges_undirected_dyn.csv')
         cooc = pd.read_csv('../out/edges/cooc_edges_undirected_dyn.csv')
         # plot_daily_tone(events, actors=['ISR', 'PSE'], write=True)
         o = ['USA', 'CHN', 'RUS', 'DEU', 'FRA', 'GBR', 'ITA'] 
         #dyn_tone(tone, actors=['ISR', 'PSE'], alters=o, write=True)
-        covtone(tone, cooc, ['USA', 'CHN'], 3)
+        # covtone(tone, cooc, ['USA', 'CHN'], 3)
+        media_polarization(events, ['ISR', 'PSE'], pd.to_datetime('2023-10-07'))
     except FileNotFoundError:
         print(f'[{Colors.ERROR}!{Colors.RESET}] No file containing dynamic edges found!')
 
