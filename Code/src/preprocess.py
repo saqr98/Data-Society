@@ -76,7 +76,6 @@ def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:
         grouped = network_undirected.groupby(["CountryPairs"])
 
     if "Count" in network_undirected.columns:
-        # TODO: test tone average merging with 'Count'
         network_undirected = grouped.apply(lambda s: pd.Series({
             "Count": s["Count"].sum(),
             "Weight": (s["Count"] * s["Weight"]).sum() / s["Count"].sum()
