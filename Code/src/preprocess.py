@@ -51,7 +51,7 @@ def _clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     :param events: A DataFrame containing events
     :return: A cleaned DataFrame with a CountryPairs-column
     """
-    events['CountryPairs'] = events['Actor1CountryCode'] + ',' + events['Actor2CountryCode']
+    events.loc[:, 'CountryPairs'] = events['Actor1CountryCode'] + ',' + events['Actor2CountryCode']
     events = events[(events["Actor1CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"])) & 
                     (events["Actor2CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"]))]
     return events
@@ -65,20 +65,22 @@ def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:
     :return: A DataFrame with undirected edges
     """
 
-    network_directed["CountryPairs"] = network_directed["CountryPairs"]\
+    network_undirected = network_directed.copy()
+    
+    network_undirected["CountryPairs"] = network_undirected["CountryPairs"]\
         .apply(lambda x: ",".join(sorted(x.split(","))))
 
-    if "Timeset" in network_directed.columns:
-        grouped = network_directed.groupby(["Timeset", "CountryPairs"])
+    if "Timeset" in network_undirected.columns:
+        grouped = network_undirected.groupby(["Timeset", "CountryPairs"])
     else:
-        grouped = network_directed.groupby(["CountryPairs"])
+        grouped = network_undirected.groupby(["CountryPairs"])
 
-    if "Count" in network_directed.columns:
+    if "Count" in network_undirected.columns:
         # TODO: test tone average merging with 'Count'
         network_undirected = grouped.apply(lambda s: pd.Series({
             "Count": s["Count"].sum(),
-            "Weight": (s["Count"] * s["Weight"]).mean()
-        }))
+            "Weight": (s["Count"] * s["Weight"]).sum() / s["Count"].sum()
+        })).reset_index()
 
     else:
         network_undirected = grouped["Weight"].sum().reset_index()
