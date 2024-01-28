@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import pandas as pd
 
@@ -47,7 +48,7 @@ def merge_files_read(files: []) -> pd.DataFrame:
 
     i = 0
     for file in files:
-        event = pd.read_csv(file)
+        event = pd.read_csv(file, dtype={"EventCode": 'str',"EventBaseCode": 'str'})
         events = pd.concat([events, event], ignore_index=True) if i > 0 else event
         i += 1
     return events
@@ -185,7 +186,7 @@ def transform_undirected():
 
 
 # ---------------------------- ANALYSIS ----------------------------
-def get_inflections(tone: pd.DataFrame):
+def get_inflections(tone: pd.Series, threshold=2):
     """
     Retrieve inflection points for the tone between two
     countries using the Z-score of the tones in the data.
@@ -195,11 +196,14 @@ def get_inflections(tone: pd.DataFrame):
 
     :param tone: A DataFrame containing the tones between two actors
     """
-    idx = zscore(tone)
+    scores = zscore(tone, threshold=threshold)
+    # Identify anomalies as those with a Z-score exceeding a threshold
+    anomalies = np.abs(scores) > threshold
+    idx = np.where(anomalies)[0]
     return tone.iloc[idx]
 
 
-def zscore(tones: pd.Series):
+def zscore(data: pd.Series) -> pd.Series:
     """
     Help identify anomalies in tone changes between the two
     given countries. Allows for the identification of causal
@@ -208,13 +212,44 @@ def zscore(tones: pd.Series):
     :param tones: A Series of temporally chronological tones between two countries
     :return: The indeces of identified anomalies
     """
-    mean_tone = np.mean(tones)
-    std_tone = np.std(tones)
+    mean = np.mean(data)
+    std = np.std(data)
 
     # Calculate Z-scores for each temperature measurement
-    z_scores = (tones - mean_tone) / std_tone
+    z_scores = (data - mean) / std
+    return z_scores
 
-    # Identify anomalies as those with a Z-score exceeding a threshold
-    z_score_threshold = 3  # Commonly used threshold for outliers
-    anomalies = np.abs(z_scores) > z_score_threshold
-    return np.where(anomalies)[0]
+def normalize(data: pd.Series) -> pd.Series:
+    """
+    Perform min-max normalisation on given data.
+
+    :param data: A Series containing data to normalize
+    :return: The normalized Series
+    """
+    return (data - data.min())/ (data.max() - data.min())
+
+
+def map_media_to_country_origin(df):
+    """
+    Maps entry of GDELT event table to the country where the media that wrote the article originates from
+    and adds new column "CountryOrigin" to the dataframe.
+
+    Details on methodology here: https://blog.gdeltproject.org/mapping-the-media-a-geographic-lookup-of-gdelts-sources/.
+
+    :param df: Sample of GDELT event table as a dataframe including "SOURCEURL" column
+    :return: Function performs inplace adding new column to df, see description
+    """
+
+    # Regex to extract a base URL of the media source
+    regex = re.compile(
+    "(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?([a-zA-Z0-9\-\_]{2,}(\.[a-zA-Z0-9]{2,})(\.[a-zA-Z0-9]{2,})?)"
+    )
+    temp = pd.DataFrame()
+    temp.loc[:, "Media"] = df["SOURCEURL"].str.extract(regex).iloc[:, 1]
+    temp = temp.merge(
+        MEDIA_COUNTRY_CODE_MAPPING[["Media", "CountryName", "CountryCode"]],
+        how="left",
+        on="Media"
+    )
+    df.loc[:, "CountryOrigin"] = temp.loc[:, "CountryCode"].values
+    del temp

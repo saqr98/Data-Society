@@ -86,39 +86,35 @@ def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:
     return network_undirected
 
 
-def create_nodes():
-    nodes = pd.read_csv('../data/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
-    nodes.rename(columns={'Country': 'Label', 'ISO-alpha3 code': 'ISO', 'Numeric code': 'ID', 
-                          'Latitude (average)': 'Latitude',  'Longitude (average)': 'Longitude'}, inplace=True)
-    nodes = nodes[['ID', 'Label', 'ISO', 'Latitude', 'Longitude']]
-    nodes.drop_duplicates(subset='ID', inplace=True)
-    # nodes.to_csv('../out/nodes/nodes_new.csv', sep=',', index=False)
+def create_nodes(edges: pd.DataFrame):
+    # Load country meta-information
+    n = pd.read_csv('../data/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
+    
+    # TODO: Create node file with timestamps for nodes
+    # if 'Timeset' in edges.columns:
+    #     edges = edges.groupby(by=['Timeset'])
+    #     s = edges['Source'].unique().tolist()
+    #     t = edges['Target'].unique().tolist()
+    #     print(s)
+    #     print(type(set(s)), t)
+    #     al = set(s + t)
+    #     print(al)
 
+    # Retrieve meta-information for countries present in current network
+    s = set(edges['Source'].values)
+    al = s.union(set(edges['Target'].values))
+    nodes = n[n['ISO-alpha3 code'].isin(al)]
+
+    # Rename & reorder columns , 'Numeric code': 'ID'
+    col_names = {'Country': 'Label', 'ISO-alpha3 code': 'ID', 
+                'Latitude (average)': 'Latitude',  'Longitude (average)': 'Longitude'}
+    nodes.rename(columns=col_names, inplace=True)
+    nodes = nodes[['ID', 'Label', 'Latitude', 'Longitude']]
+
+    # Drop duplicate countries
+    nodes.drop_duplicates(subset='ID', inplace=True)
     return nodes
 
-'''
-def create_edges(events: pd.DataFrame, dynam=False, to_csv=False):
-    edges = pd.DataFrame()
-
-    if dynam:
-        # Add dates if dyanmic network is wanted
-        edges['Timeset'] = events.reset_index()['SQLDATE']
-
-    edges[['Source', 'Target']] = events.reset_index()['CountryPairs'].str.split(',', expand=True)
-    edges['Weight'], edges['Type'] = events.values, 'Directed'
-
-    if dynam:
-        # Reorder columns
-        edges = edges[['Source', 'Target', 'Weight', 'Timeset', 'Type']]
-    else:
-        # Reorder columns
-        edges = edges[['Source', 'Target', 'Weight', 'Type']]
-
-    if to_csv:
-        edges.to_csv('../out/edges/edges_directed.csv', sep=',', index=False)
-        
-    return edges
-'''
 
 def create_edges(network: pd.DataFrame, type="Undirected"):
     edges = pd.DataFrame()
