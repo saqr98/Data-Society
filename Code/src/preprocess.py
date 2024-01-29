@@ -49,9 +49,7 @@ def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:
 
     :return: A DataFrame with undirected edges
     """
-
     network_undirected = network_directed.copy()
-    
     network_undirected["CountryPairs"] = network_undirected["CountryPairs"]\
         .apply(lambda x: ",".join(sorted(x.split(","))))
 

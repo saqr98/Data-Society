@@ -121,7 +121,7 @@ def linear_transform(x: int, a=-10, b=10, c=1, d=2) -> int:
     return ((x - a) * (d - c) / (b - a) + c)
 
 
-def calculate_weight(num_mentions: int, tone: int) -> int:
+def calculate_weight(num_mentions: int, tone: int, mode=0) -> int:
     """
     Calculate the weight of an event using its originally 
     assigned but compressed Goldstein value and extracted 
@@ -131,6 +131,9 @@ def calculate_weight(num_mentions: int, tone: int) -> int:
     :param tone: Average tone of current event
     :return: Final weight of event
     """
+    if mode:
+        return num_mentions * tone
+
     return num_mentions * linear_transform(tone, a=-100, b=100, c=1, d=10)
 
 
@@ -151,7 +154,7 @@ def clean_countrypairs(events: pd.DataFrame) -> pd.DataFrame:
     :param events: A DataFrame containing events
     :return: A cleaned DataFrame with a CountryPairs-column
     """
-    events['CountryPairs'] = events['Actor1CountryCode'] + ',' + events['Actor2CountryCode']
+    events.loc[:, 'CountryPairs'] = events['Actor1CountryCode'] + ',' + events['Actor2CountryCode']
     events = events[(events["Actor1CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"])) & 
                     (events["Actor2CountryCode"].isin(COUNTRYCODES["ISO-alpha3 code"]))]
     return events
@@ -229,6 +232,7 @@ def zscore(data: pd.Series) -> pd.Series:
     """
     mean = np.mean(data)
     std = np.std(data)
+    print(mean, std)
 
     # Calculate Z-scores for each temperature measurement
     z_scores = (data - mean) / std
@@ -241,10 +245,11 @@ def normalize(data: pd.Series) -> pd.Series:
     :param data: A Series containing data to normalize
     :return: The normalized Series
     """
-    return (data - data.min())/ (data.max() - data.min())
+    print((data - data.min()) / (data.max() - data.min()))
+    return (data - data.min()) / (data.max() - data.min())
 
 
-def map_media_to_country_origin(df, media):
+def map_media_to_country_origin(df: pd.DataFrame, media: pd.DataFrame) -> None:
     """
     Maps entry of GDELT event table to the country where the media that wrote the article originates from
     and adds new column "CountryOrigin" to the dataframe.
@@ -266,5 +271,5 @@ def map_media_to_country_origin(df, media):
         how="left",
         on="Media"
     )
-    df.loc[:, "CountryOrigin"] = temp.loc[:, "CountryCode"].values
+    df.loc[:, "URLOrigin"] = temp.loc[:, "CountryCode"].values
     del temp

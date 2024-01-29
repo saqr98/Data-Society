@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-from helper import get_inflections, calculate_weight, Colors, zscore, normalize, merge_files_read, clean_countrypairs
+from helper import *
 from preprocess import dynamic
 
 PATH = '../data/raw/'
@@ -179,7 +179,7 @@ def covtone(tone: pd.DataFrame, cooc: pd.DataFrame, actors: [], period: int):
     # filtered_tones = filtered_tones['Timeset'][period_start:period_end]
     # filtered_cooc = filtered_cooc['Timeset'][period_start:period_end]
 
-    # --------------- Make Plot ---------------
+    # --------------- Create Plot ---------------
     plt.figure(figsize=(12, 6))
     plt.plot(filtered_tones.Timeset, filtered_tones.Weight.apply(lambda x: normalize(x)), 
             label='Tone')
@@ -196,15 +196,63 @@ def covtone(tone: pd.DataFrame, cooc: pd.DataFrame, actors: [], period: int):
 def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
     """
     A method to plot polarization after a significant inflection
-    point in the relation ship between two actors.
+    point in the relationship between two actors.
 
     It uses the number of co-occurrences of two actors in the media
     as a measure of intensity as well as the tone to plot a third country's 
     position on the inflection point in two dimensions (co-occurrence vs. tone).
     """
+    # Get media to country mapping
     media = pd.read_csv('../data/media_country_code_mapping.csv')
+
+    # Retrieve all entries from specified date onwards for specified actor-pair
     filtered_events = events[(events['SQLDATE'] >= inflection_date)]
-    filtered_events = filtered_events[(filtered_events['CountryPairs'] == actors[0]) & ]
+    filtered_events = filters.filter_actors(filtered_events, actors, ['Actor1CountryCode', 'Actor2CountryCode'])
+    
+    # Filter out all entries from news sources affiliated with the country of any of the two actors
+    map_media_to_country_origin(filtered_events, media=media)
+    nactors = ~filtered_events['URLOrigin'].isin(actors)
+    media_filtered = filtered_events[nactors].dropna(subset='URLOrigin')
+
+    # Calculate edge weights using no. of mentions and average tone of an event
+    # TODO: Potentially move to if __name__ before data is passed
+    media_filtered['Weight'] = calculate_weight(media_filtered['NumMentions'], media_filtered['AvgTone'], mode=1)
+    
+    # Compute co-occurrences and tone
+    media_filtered = media_filtered.groupby(by='URLOrigin').agg(
+        Count=('GLOBALEVENTID', 'count'),
+        Tone=('Weight', 'mean')
+    ).reset_index()
+
+    # TODO: Verify countin etc. is correct --> Weird outliers seem to exist
+    media_filtered = media_filtered[media_filtered['URLOrigin'] != 'USA']
+    # print(media_filtered.groupby('URLOrigin').get_group('USA'))
+
+    # Standardize/ Normalize columns
+    # TODO: Recheck standardization/normalization of columns
+    media_filtered['Tone'] = zscore(media_filtered.Tone)
+    media_filtered['Count'] = normalize(zscore(media_filtered.Count))
+
+    # Merge on region
+    # https://unstats.un.org/unsd/methodology/m49/overview/
+    regions = pd.read_csv('../data/country_region.csv')
+    media_filtered = media_filtered.merge(right=regions, 
+                                          left_on='URLOrigin', 
+                                          right_on='ISO', 
+                                          how='left')\
+                                    .drop(columns=['ISO', 'Country', 'Sub-region'])\
+                                    .groupby('Region')
+
+    # --------------- Create Plot ---------------
+    plt.figure(figsize=(12,6))
+    for name, group in media_filtered:
+        plt.scatter(group.Tone, group.Count, label=name)
+
+    plt.xlabel('Standardized Tone')
+    plt.ylabel('Normalized Co-Occurrences')
+    plt.title(f'Polarization since Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':
