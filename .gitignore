@@ -28,4 +28,6 @@ Code/out/nodes/**/*.csv
 
 Code/src/__pycache__/
 
+Code/src/temp.py
+
 # !Code/data
