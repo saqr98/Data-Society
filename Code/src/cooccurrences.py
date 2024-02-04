@@ -44,13 +44,13 @@ def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=Fals
         weight_normalized = (weight_abs / weight_abs.sum()).reset_index()
 
 
-    #col_names = {
-    #    "SQLDATE": "Timeset",
-    #    "GLOBALEVENTID": "Weight",
-    #    0: "Weight",
-    #    "NumMentions": "Weight"
-    #}
-    #weight_normalized.rename(columns=col_names, inplace=True)    
+    col_names = {
+        "SQLDATE": "Timeset",
+        "GLOBALEVENTID": "Weight",
+        0: "Weight",
+        "NumMentions": "Weight"
+    }
+    weight_normalized = weight_normalized.rename(columns=col_names)    
 
     return weight_normalized
 
@@ -60,12 +60,36 @@ if __name__ == '__main__':
     events = pd.read_csv("../data/events/all-events-autumn-2023.csv", dtype={"EventCode": 'str',
                                                                    "EventBaseCode": 'str',})
     
-    cooccurences_network = cooccurrences(events, weight_by_num_mentions=False, dynam=False, freq="D")
+    ## static network
+    #cooccurences_network = cooccurrences(events, weight_by_num_mentions=True, dynam=False, freq="D")
     #undirected_network = create_undirected_network(cooccurences_network)
     #edges = create_edges(undirected_network)
-    #nodes = create_nodes()
+    #nodes = create_nodes(edges)
+#
+    #print("Static network:\n")
+    #print(cooccurences_network.head(10))
 
+    # dynamic network
+    cooccurences_network = cooccurrences(events, weight_by_num_mentions=True, dynam=True, freq="M")
+    undirected_network = create_undirected_network(cooccurences_network)
+    edges = create_edges(undirected_network)
+    nodes = create_nodes(edges)
+
+    print("\nDynamic network\n")
     print(cooccurences_network.head(10))
+
+
+
+    if 'Timeset' in edges.columns:
+        edges.to_csv('../out/edges/cooccurrences/edges_undirected_dyn.csv', sep=',', index=False)
+        nodes.to_csv('../out/nodes/cooccurrences/nodes_dyn.csv', sep=',', index=False)
+
+    else:
+        edges.to_csv('../out/edges/cooccurrences/edges_undirected_stat.csv', sep=',', index=False)
+        nodes.to_csv('../out/nodes/cooccurrences/nodes_stat.csv', sep=',', index=False)
+
+
+
 
     #print(edges.head(10))
     #print(edges[(edges.Timeset == "2023-10-03") & (edges.Source == "ISR")].shape)

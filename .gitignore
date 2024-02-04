@@ -21,9 +21,15 @@ __pycache__
 # Code/data/helper/
 # Code/data/*.csv
 Code/data/raw/
-Code/out/tones/
 Code/data/events/
+
+Code/out/edges/**/*.csv
+Code/out/nodes/**/*.csv
+
 Code/src/__pycache__/
+
+Code/src/temp.py
+
 
 out/
 # !Code/data
