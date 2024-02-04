@@ -7,11 +7,12 @@ import matplotlib.dates as mdates
 
 from helper import *
 from preprocess import dynamic
+from metrics import betweenness, closeness, eigenvector
 
 PATH = '../data/raw/'
 
 
-def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False) -> pd.Series:
+def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False):
     """
     Identify major changes in the tone between two actors. Plot their tone
     and changes and compare the tone of each of them with third actors of
@@ -85,8 +86,8 @@ def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False) -> pd.Se
     plt.legend()
 
     if write:
-        plt.savefig(f'../out/analysis/major_inflection_{actors[0]}_{actors[1]}.png')
-        return inflection_dates
+        average_tone.to_csv(f'../out/tones/tone_{actors[0]}_{actors[1]}.csv', index=False)
+        plt.savefig(f'../out/tones/plots/tone_{actors[0]}_{actors[1]}.png')
     else:
         plt.show()
 
@@ -133,7 +134,7 @@ def covtone(tone: pd.DataFrame, cooc: pd.DataFrame, actors: [], period: int):
     plt.show()
     
 
-def media_polarization(events: pd.DataFrame, actors: [], inflection_date, extrema=True, write=False):
+def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
     """
     A method to plot polarization after a significant inflection
     point in the relationship between two actors.
@@ -142,31 +143,36 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date, extrem
     as a measure of intensity as well as the tone to plot a third country's 
     position on the inflection point in two dimensions (co-occurrence vs. tone).
     """
-    # Retrieve all entries from specified date onwards for specified actor-pair
-    # and calculate weight
-    filtered_events = events[(events['SQLDATE'] >= inflection_date)]
-    filtered_events['Weight'] = calculate_weight(filtered_events['NumMentions'], filtered_events['AvgTone'], mode=1)
-
     # Get media to country mapping
-    media = pd.read_csv('../data/helper/media_country_code_mapping.csv')
-    map_media_to_country_origin(filtered_events, media=media)
+    media = pd.read_csv('../data/media_country_code_mapping.csv')
 
-    # Calculate average tone, total amount of reporting and amount of event-related 
-    # reporting since inflection point
-    media_filtered = filtered_events.groupby(['URLOrigin']).apply(
-        lambda x: pd.Series({
-                'Tone': x[((x['Actor1CountryCode'] == actors[0]) & (x['Actor2CountryCode'] == actors[1])) |\
-                    ((x['Actor2CountryCode'] == actors[0]) & (x['Actor1CountryCode'] == actors[1]))]['Weight'].mean(),
-                'TopicCount': x[((x['Actor1CountryCode'] == actors[0]) & (x['Actor2CountryCode'] == actors[1])) |\
-                    ((x['Actor2CountryCode'] == actors[0]) & (x['Actor1CountryCode'] == actors[1]))]['Weight'].shape[0],
-                'TotalCount': x.shape[0]
-                }
-            )
-        ).reset_index()
+    # Retrieve all entries from specified date onwards for specified actor-pair
+    filtered_events = events[(events['SQLDATE'] >= inflection_date)]
+    filtered_events = filters.filter_actors(filtered_events, actors, ['Actor1CountryCode', 'Actor2CountryCode'])
     
-    # Compute fraction of event-related reporting from total amount of reporting
-    media_filtered['TopicShare'] = ((media_filtered['TopicCount'] / media_filtered['TotalCount']) * 100).round(3)  
-    media_filtered = media_filtered.dropna()
+    # Filter out all entries from news sources affiliated with the country of any of the two actors
+    map_media_to_country_origin(filtered_events, media=media)
+    nactors = ~filtered_events['URLOrigin'].isin(actors)
+    media_filtered = filtered_events[nactors].dropna(subset='URLOrigin')
+
+    # Calculate edge weights using no. of mentions and average tone of an event
+    # TODO: Potentially move to if __name__ before data is passed
+    media_filtered['Weight'] = calculate_weight(media_filtered['NumMentions'], media_filtered['AvgTone'], mode=1)
+    
+    # Compute co-occurrences and tone
+    media_filtered = media_filtered.groupby(by='URLOrigin').agg(
+        Count=('GLOBALEVENTID', 'count'),
+        Tone=('Weight', 'mean')
+    ).reset_index()
+
+    # TODO: Verify countin etc. is correct --> Weird outliers seem to exist
+    media_filtered = media_filtered[media_filtered['URLOrigin'] != 'USA']
+    # print(media_filtered.groupby('URLOrigin').get_group('USA'))
+
+    # Standardize/ Normalize columns
+    # TODO: Recheck standardization/normalization of columns
+    media_filtered['Tone'] = zscore(media_filtered.Tone)
+    media_filtered['Count'] = normalize(zscore(media_filtered.Count))
 
     # Merge on region
     # https://unstats.un.org/unsd/methodology/m49/overview/
@@ -175,55 +181,120 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date, extrem
                                           left_on='URLOrigin', 
                                           right_on='ISO', 
                                           how='left')\
-                                    .drop(columns=['ISO', 'Country', 'Sub-region'])
-
-    # Filter out main actors and delete them from media_filtered
-    mask = (media_filtered['URLOrigin'] == actors[0]) | (media_filtered['URLOrigin'] == actors[1])
-    main_actors_filtered = media_filtered[mask]
-    media_filtered = media_filtered[~mask]
+                                    .drop(columns=['ISO', 'Country', 'Sub-region'])\
+                                    .groupby('Region')
 
     # --------------- Create Plot ---------------
     plt.figure(figsize=(12,6))
-    plt.scatter(main_actors_filtered.iloc[0]['Tone'], main_actors_filtered.iloc[0]['TopicShare'], marker='v', c='#731963', label=actors[0])
-    if len(main_actors_filtered) > 1:
-        plt.scatter(main_actors_filtered.iloc[1]['Tone'], main_actors_filtered.iloc[1]['TopicShare'], marker='v', c='#0B3C49', label=actors[1])
-    
-    # Plot entries from individual groups
-    for name, group in media_filtered.groupby('Region'):
-        plt.scatter(group.Tone, group.TopicShare, cmap='tab20c', label=name)
+    for name, group in media_filtered:
+        plt.scatter(group.Tone, group.Count, label=name)
 
-    # Retrieve extrema from data
-    if extrema:
-        get_extremes(media_filtered)
-
-    # Show or write plot
-    plt.xlabel('Tone')
-    plt.ylabel('Fraction of event-related reporting (%)')
+    plt.xlabel('Standardized Tone')
+    plt.ylabel('Normalized Co-Occurrences')
     plt.title(f'Polarization since Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
     plt.legend()
+    plt.show()
 
-    if write:
-        plt.savefig(f'../out/analysis/polarization_scatter_{actors[0]}_{actors[1]}.png')
-    else:
+
+def create_dynamic_centrality_metric_table(edges: pd.DataFrame, nodes: pd.DataFrame, metric_name: str, metric_func: callable) -> pd.DataFrame:
+    """
+    Helper tabular data generator for plot_centrality_over_time().
+
+    :param edges: Network's edges
+    :param nodes: Network's nodes
+    :param metric_name:
+        One of three options allowed:
+        - 'BetweennessCentrality'
+        - 'ClosenessCentrality'
+        - 'EigenvectorCentrality'
+    :param metric_func:
+        One of three functions that calculate a centrality metric from metrics.py
+        - betweenness
+        - closeness
+        - eigenvector
+    
+    :return: Returns a DataFrame with countries in the index, periods of time as columns,
+    and the centrality metric as values of the table.
+    """
+
+    metric_score_dynamic = pd.DataFrame(index=nodes.ID)
+
+    for time_period in edges.Timeset.unique():
+        metric_score = metric_func(
+            nodes=nodes,
+            edges=edges[edges.Timeset == time_period]
+        )
+        metric_score.set_index("ID", inplace=True)
+    
+        metric_score_dynamic = pd.merge(
+            left=metric_score_dynamic,
+            right=metric_score[[metric_name]],
+            how="left",
+            right_index=True,
+            left_index=True
+        ).rename(
+            columns={
+                metric_name: time_period
+            }
+        )
+    return metric_score_dynamic
+
+
+def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, plot_top: int, xlabel="Time Period", ylabel="", save_path=None):
+    """
+    Plots centrality metrics of countries for a list of periods of time.
+
+    :param metric_score_dynamic: Output of create_dynamic_centrality_metric_table()
+    :param plot_top: How many countries with the highest centraity score to plot in the graph
+    :param xlabel: X-axis label to plot
+    :param ylabel: Y-axis label to plot (you want to put name of the centrality metric here)
+    :param save_path: Path to save the graph. If None, just show the graph in runtime.
+    """
+    df = metric_score_dynamic.copy()
+
+    # Dictionary to assign color to each country
+    country_colors = {}
+    plt.figure(figsize=(10, 15))
+    for time_period in df.columns:
+        # Sort by centrality and take first plot_top countries that will appear in the graph
+        subset = df.sort_values(by=time_period, ascending=False).iloc[:plot_top].loc[:,time_period]
+        # Assign a randomly generated color to each country in top selected
+        country_colors.update({key: generate_random_color() for key in subset.index if key not in country_colors.keys()})
+        for country in subset.index:
+            plt.scatter(time_period, subset.loc[country], color=country_colors[country])
+        plt.vlines(time_period, ymin=subset.min().min(), ymax=df.max().max(), color='gray', linestyle='--', alpha=0.7)
+
+
+    locs, labels = plt.xticks()
+    xticks_dict = {label.get_text(): loc for label, loc in zip(labels, locs)}
+
+    for country, color in country_colors.items():
+        line2plot = pd.DataFrame(columns=["Timeperiod", "Score"])
+        for time_period in df.columns:
+            subset = df.sort_values(by=time_period, ascending=False).iloc[:plot_top].loc[:,time_period]
+            if country in subset.index:
+                # TODO: Fix the following: if country appears in plot_top for, say, September and November,
+                # but not for October, there will be a straight line from September to November crossing
+                # October. We want to connect only those dots that reside in neighbouring time periods.
+                line2plot.loc[len(line2plot)] ={"Timeperiod": time_period, "Score": subset.loc[country]}
+
+        plt.plot(line2plot["Timeperiod"], line2plot["Score"], color=color, label=country)
+
+        min_row = line2plot.loc[pd.to_datetime(line2plot['Timeperiod']).idxmin()]
+        label_xcoord, label_ycoord = xticks_dict[min_row.loc["Timeperiod"]] - 0.08, min_row["Score"]
+        plt.text(label_xcoord, label_ycoord, country, fontsize=8, verticalalignment='center')
+
+    plt.ylabel(ylabel)
+    plt.xlabel(xlabel)
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    
+    if save_path is None:
         plt.show()
-
-
-def get_extremes(data: pd.DataFrame):
-    """
-    A method to plot the difference in polarization before
-    and after a given inflection point.
-    """
-    max_neg = data['Tone'].idxmin()
-    min_neg = data['Tone'].idxmax()
-    max_count = data['TopicShare'].idxmax()
-    min_count = data['TopicShare'].idxmin()
-
-    print(f'Max. neg: {data.loc[max_neg]} -- Min. neg: {data.loc[min_neg]}')
-    print(f'Max. count: {data.loc[max_count]} -- Min. count: {data.loc[min_count]}')
+    else:
+        plt.savefig(save_path)
 
 
 if __name__ == '__main__':
-    # IQR (inerquartile rate) outliers detection
     # events = pd.DataFrame(columns=['GLOBALEVENTID', 'SQLDATE', 'Actor1Code', 'Actor1Name', 
     #                                'Actor1CountryCode', 'Actor1Type1Code', 'Actor1Type2Code', 
     #                                'Actor2Code', 'Actor2Name', 'Actor2CountryCode', 'Actor2Type1Code', 
@@ -236,17 +307,31 @@ if __name__ == '__main__':
     #     events = pd.concat([events, event], ignore_index=True) if i > 0 else event
 
     try:
-        files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
-        events = merge_files_read(files=files)
+        #files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
+        #events = merge_files_read(files=files)
+        events = pd.read_csv("../data/events/all-events-autumn-2023.csv", dtype={"EventCode": 'str',
+                                                                   "EventBaseCode": 'str',})
+    
         events = clean_countrypairs(events)
 
-        tone = pd.read_csv('../out/edges/edges_undirected_dyn.csv')
-        cooc = pd.read_csv('../out/edges/cooc_edges_undirected_dyn.csv')
+        tone_edges = pd.read_csv('../out/edges/edges_undirected_dyn.csv')
+        cooc_edges = pd.read_csv('../out/edges/cooccurrences/edges_undirected_dyn_monthly.csv')
+        cooc_nodes = pd.read_csv("../out/nodes/cooccurrences/nodes_dyn_monthy.csv")
+                 
         # plot_daily_tone(events, actors=['ISR', 'PSE'], write=True)
         o = ['USA', 'CHN', 'RUS', 'DEU', 'FRA', 'GBR', 'ITA'] 
-        # dyn_tone(tone, actors=['ISR', 'PSE'], alters=o, write=True)
-        #covtone(tone, cooc, ['USA', 'CHN'], 3)
-        media_polarization(events, ['ISR', 'USA'], pd.to_datetime('2023-10-07'), write=True)
+        #dyn_tone(tone, actors=['ISR', 'PSE'], alters=o, write=True)
+        # covtone(tone, cooc, ['USA', 'CHN'], 3)
+        #media_polarization(events, ['ISR', 'PSE'], pd.to_datetime('2023-10-07'))
+        temp = create_dynamic_centrality_metric_table(
+            edges=cooc_edges,
+            nodes=cooc_nodes,
+            metric_name="EigenvectCentrality",
+            metric_func=eigenvector
+        )
+
+        print(temp.head())
+
     except FileNotFoundError:
         print(f'[{Colors.ERROR}!{Colors.RESET}] No file containing dynamic edges found!')
 

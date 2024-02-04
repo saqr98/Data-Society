@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import pandas as pd
+import random
 
 
 # ---------------------------- MONITORING ----------------------------
@@ -273,3 +274,8 @@ def map_media_to_country_origin(df: pd.DataFrame, media: pd.DataFrame) -> None:
     )
     df.loc[:, "URLOrigin"] = temp.loc[:, "CountryCode"].values
     del temp
+
+def generate_random_color():
+    # Generate a random RGB color
+    color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+    return color
