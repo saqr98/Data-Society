@@ -159,31 +159,32 @@ if __name__ == '__main__':
         WHERE Year in (2019) AND Actor1CountryCode != Actor2CountryCode <--
     '''
     start, end = 854, 1267
-    # blob_no = [str(num).zfill(12) for num in range(start, end + 1)]
+    blob_no = [str(num).zfill(12) for num in range(start, end + 1)]
 
-    # if not os.path.exists('../data/tmp'):
-    #     os.mkdir('../data/tmp')
+    if not os.path.exists('../data/tmp'):
+        os.mkdir('../data/tmp')
 
-    # if len(os.listdir('../data/tmp')) > 0:
-    #     blob_no = get_existing(blob_no)
+    if len(os.listdir('../data/tmp')) > 0:
+        blob_no = get_existing(blob_no)
 
-    # chunks = list(split_into_chunks(blob_no, THREADS))
-    # args = [(i, BUCKET_NAME, chunk) for i, chunk in enumerate(chunks)]
+    chunks = list(split_into_chunks(blob_no, THREADS))
+    args = [(i, BUCKET_NAME, chunk) for i, chunk in enumerate(chunks)]
 
-    # start_time = time.perf_counter()
-    # print(f'[!] {len(blob_no)} requests have to be made to retrieve full year of data')
+    start_time = time.perf_counter()
+    print(f'[!] {len(blob_no)} requests have to be made to retrieve full year of data')
     
-    # # Uncomment if to be run on single core/thread
-    # # fetch_blobs((0, BUCKET_NAME, blob_no))
-    # with cf.ThreadPoolExecutor() as exec:
-    #     results = exec.map(fetch_blobs, args)
+    # Uncomment if to be run on single core/thread
+    # fetch_blobs((0, BUCKET_NAME, blob_no))
+    with cf.ThreadPoolExecutor() as exec:
+        results = exec.map(fetch_blobs, args)
     
-    # # Merge blob files into one
-    # write_file(blob_no, year='2019')
+    # Merge blob files into one
+    write_file(blob_no, year='2019')
 
     # Delete Blobs in Google Cloud Storage and files in /tmp
     if len(os.listdir('../data/tmp')) == 1 + end - start:
         clean_tmp()
         delete_blobs(bucket_name=BUCKET_NAME)
         print(f'[{Colors.ERROR}!{Colors.RESET}] Deleted /tmp folder and blob files')
-    # print(f'[!] Processing took {time.perf_counter() - start_time}')
+    
+    print(f'[!] Processing took {time.perf_counter() - start_time}')
