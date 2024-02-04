@@ -19,6 +19,12 @@ def find_next_date(group, current_date, value):
 
 
 if __name__ == '__main__':
+    headers = pd.read_csv('../data/helper/data_headers.csv').T.iloc[0].values
+    google = pd.read_csv('../data/raw/2015.csv')
+    third = pd.read_csv('/Users/saqr/Downloads/20150709.export.CSV', delimiter='\t', names=headers)
+    print(third.tail(10))
+    # google = google[google['SQLDATE'] == '20150709']
+    # print(google.head(10))
     MEDIA_COUNTRY_MAPPING = pd.read_csv("../data/media-country_mapping.TXT", sep="\t", names=["Media", "CountryCodeShort", "CountryName"])
     MEDIA_COUNTRY_MAPPING.to_csv('../data/media_country_mapping.csv', sep=',', index=False)
     
