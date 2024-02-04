@@ -204,7 +204,7 @@ def transform_undirected():
 
 
 # ---------------------------- ANALYSIS ----------------------------
-def get_inflections(tone: pd.Series, threshold=2):
+def get_inflections(tone: pd.Series, mode=1, threshold=2):
     """
     Retrieve inflection points for the tone between two
     countries using the Z-score of the tones in the data.
@@ -214,10 +214,15 @@ def get_inflections(tone: pd.Series, threshold=2):
 
     :param tone: A DataFrame containing the tones between two actors
     """
-    scores = zscore(tone)
-    # Identify anomalies as those with a Z-score exceeding a threshold
-    anomalies = np.abs(scores) > threshold
-    idx = np.where(anomalies)[0]
+    if mode:
+        scores = zscore(tone)
+        # Identify anomalies exceeding Z-score threshold
+        anomalies = np.abs(scores) > threshold
+        idx = np.nonzero(anomalies)[0]
+        print(f'Z-SCORE INDECES: {idx}')
+    else:
+        idx = interquartile_range(tone)
+        print(f'IQR INDECES: {tone.iloc[idx]}')
     return tone.iloc[idx]
 
 
@@ -232,11 +237,33 @@ def zscore(data: pd.Series) -> pd.Series:
     """
     mean = np.mean(data)
     std = np.std(data)
-    print(mean, std)
 
-    # Calculate Z-scores for each temperature measurement
+    # Calculate Z-scores for each entry
     z_scores = (data - mean) / std
     return z_scores
+
+
+def interquartile_range(data: pd.Series):
+    """
+    Use interquartile range to identify anomalies
+    in tone between two actors.
+
+    :param data: A Series of temporally chronological tones between two countries
+    :return: Returns the indeces of tone anomalies
+    """
+    q1 = data.quantile(0.25)
+    q3 = data.quantile(0.75)
+    iqr = q3 - q1
+
+    # Define bounds for non-anomalous data
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+
+    # Filter anomalies
+    anomalies = data[(data < lower_bound) | (data > upper_bound)]
+    print(f'ANOMALIES: {anomalies}')
+    return anomalies
+
 
 def normalize(data: pd.Series) -> pd.Series:
     """
@@ -245,7 +272,6 @@ def normalize(data: pd.Series) -> pd.Series:
     :param data: A Series containing data to normalize
     :return: The normalized Series
     """
-    print((data - data.min()) / (data.max() - data.min()))
     return (data - data.min()) / (data.max() - data.min())
 
 

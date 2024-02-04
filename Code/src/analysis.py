@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 from helper import *
-from preprocess import dynamic
+from tone import tone
+from cooccurrences import cooccurrences
+from preprocess import create_undirected_network, create_nodes, create_edges
 
 PATH = '../data/raw/'
 
@@ -22,71 +24,71 @@ def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False) -> pd.Se
     :param alters: A list of actors who to compare individual tone changes with after inflection points
     :param write: True, if the plot should be written to file
     """
+    date = '2023-10-07'
     events['Timeset'] = pd.to_datetime(events['Timeset'])
-
     # Filter (Actor1, Actor2) events
     filtered = filters.filter_actors(events, actors, ['Source', 'Target'])
-    filtered['Weight'] = filtered['Weight'].apply(lambda x: x * (-1))
 
     # Identify inflection points
-    # TODO: Improve points search!!
-    inflection_points = get_inflections(filtered['Weight'], threshold=1.35)
-    inflection_dates = filtered['Timeset'].iloc[inflection_points]
-    # print(f'Inflection Points: {inflection_points} -- {inflection_dates}')
+    # events = events.reset_index()
+    # inflection_points = get_inflections(filtered['Weight'], mode=0, threshold=2)
+    # inflection_dates = filtered['Timeset'].iloc[inflection_points]
 
     # Create two plots
     plt.figure(figsize=(12, 6))
-    _, (ax1, ax2) = plt.subplots(2, 1, sharex=True, sharey=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, sharey=True)
 
     # --------------- ACTOR 1 + Alter ---------------
-    # TODO: For some reason not all alters are retrieved??!!!
-    timed = events[(events['Timeset'] >= inflection_dates.iloc[0]) & (events['Timeset'] <= events['Timeset'].max())]
-    filtered_a1 = timed[(timed['Source'] == actors[0]) & (timed['Target'].isin(alters))]
-
     # Create graph for Actor1
+    filtered = filtered[filtered['Timeset'] >= '2023-09-01']
     ax1.plot(filtered.Timeset, filtered.Weight, 
             label=f'{actors[0]} -- {actors[1]}')
+    
+    # TODO: For some reason not all alters are retrieved??!!! inflection_dates.iloc[0]
+    # timed = events[(events['Timeset'] >= '2023-10-07') & (events['Timeset'] <= events['Timeset'].max())]
+    filtered_a1 = events[(events['Timeset'] >= date) & (events['Source'] == actors[0]) & 
+                         (events['Target'].isin(alters))]
     
     # Plot tone between actor1 and other actors
     filtered_a1 = filtered_a1.groupby(by=['Target'])
     for name, group in filtered_a1:
-        ax1.plot(group.Timeset, group.Weight, label=f'{actors[0]} -- {name}')
+        ax1.plot(group.Timeset, group.Weight, label=f'{actors[0]} -- {name[0]}')
 
-    ax1.axvline(pd.to_datetime(inflection_dates.iloc[0]), color='purple', linestyle='--', linewidth=2)
+    ax1.axvline(pd.to_datetime(date), color='purple', linestyle='--', linewidth=2)
+    ax1.legend()
     # ax1.axvline(pd.to_datetime(inflection_dates.iloc[-1]), color='purple', linestyle='--', linewidth=2)
-    print(filtered_a1['Target'].unique())
+    # print(filtered_a1['Target'].unique())
     # --------------- ACTOR 2 ---------------
-    filtered_a2 = events[(events['Source'] == actors[1]) & (events['Target'].isin(alters)) &
-                         (events['Timeset'] >= inflection_dates.iloc[0])]
-    
-    print(filtered_a2['Target'].unique())
     # Create graph for Actor2
     ax2.plot(filtered.Timeset, filtered.Weight, 
             label=f'{actors[0]} -- {actors[1]}')
     
+    filtered_a2 = events[(events['Timeset'] >= date) & (events['Source'] == actors[1]) & 
+                         (events['Target'].isin(alters))]
+    
     # Plot tone between actor1 and other actors
-    print(filtered_a2['CombinedActor'].unique())
+    # print(filtered_a2['CombinedActor'].unique())
     filtered_a2 = filtered_a2.groupby(by=['Target'])
     for name, group in filtered_a2:
-        ax2.plot(group.Timeset, group.Weight, label=f'{actors[1]} -- {name}')
+        ax2.plot(group.Timeset, group.Weight, label=f'{actors[1]} -- {name[0]}')
 
     # Draw vertical lines for inflection period
     # for date in inflection_dates:
-    ax2.axvline(pd.to_datetime(inflection_dates.iloc[0]), color='purple', linestyle='--', linewidth=2)
+    ax2.axvline(pd.to_datetime(date), color='purple', linestyle='--', linewidth=2)
+    ax2.legend()
     # ax2.axvline(pd.to_datetime(inflection_dates.iloc[-1]), color='purple', linestyle='--', linewidth=2)   
 
     plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
     plt.xticks(rotation=45)
 
-    plt.xlabel('Date')
-    plt.ylabel('Average Tone')
-    plt.title('Average Interaction Tone Over Time')
-    plt.legend()
+    ax1.set_ylabel('Average Tone')
+    ax2.set_ylabel('Average Tone')
+    fig.suptitle('Average Interaction Tone Over Time')
 
     if write:
-        plt.savefig(f'../out/analysis/major_inflection_{actors[0]}_{actors[1]}.png')
-        return inflection_dates
+        plt.savefig(f'../out/analysis/{actors[0]}_{actors[1]}/major_inflection_{actors[0]}_{actors[1]}.png')
+        return date
     else:
         plt.show()
 
@@ -203,7 +205,7 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date, extrem
     plt.legend()
 
     if write:
-        plt.savefig(f'../out/analysis/polarization_scatter_{actors[0]}_{actors[1]}.png')
+        plt.savefig(f'../out/analysis/{actors[0]}_{actors[1]}/polarization_scatter_{actors[0]}_{actors[1]}.png')
     else:
         plt.show()
 
@@ -224,29 +226,22 @@ def get_extremes(data: pd.DataFrame):
 
 if __name__ == '__main__':
     # IQR (inerquartile rate) outliers detection
-    # events = pd.DataFrame(columns=['GLOBALEVENTID', 'SQLDATE', 'Actor1Code', 'Actor1Name', 
-    #                                'Actor1CountryCode', 'Actor1Type1Code', 'Actor1Type2Code', 
-    #                                'Actor2Code', 'Actor2Name', 'Actor2CountryCode', 'Actor2Type1Code', 
-    #                                'Actor2Type1Code', 'EventCode', 'EventBaseCode', 'GoldsteinScale', 
-    #                                'NumMentions', 'AvgTone', 'SOURCEURL'])
-    
-    # files = os.listdir(PATH)
-    # for i, file in enumerate(files):
-    #     event = pd.read_csv(PATH + file)
-    #     events = pd.concat([events, event], ignore_index=True) if i > 0 else event
+    year = 2023
+    n_type = 'tone'
+    actors = ['ISR', 'PSE']
+    alters = ['USA', 'CHN', 'RUS', 'DEU', 'FRA', 'GBR', 'ITA'] 
+    events = pd.read_csv(f'../data/raw/{year}.csv', parse_dates=['SQLDATE'])
+    events = clean_countrypairs(events)
 
-    try:
-        files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
-        events = merge_files_read(files=files)
-        events = clean_countrypairs(events)
+    # If dynamic network does not exist for specified year
+    if not any('dynamic' in f for f in os.listdir(f'../out/{year}/{n_type}')):
+        toned = tone(events, dynam=True, mode=1)
+        undir = create_undirected_network(toned)
+        edges = create_edges(undir.reset_index())
+        edges.to_csv(f'../out/{year}/{n_type}/edges_dynamic.csv', sep=',', index=False)
 
-        tone = pd.read_csv('../out/edges/edges_undirected_dyn.csv')
-        cooc = pd.read_csv('../out/edges/cooc_edges_undirected_dyn.csv')
-        # plot_daily_tone(events, actors=['ISR', 'PSE'], write=True)
-        o = ['USA', 'CHN', 'RUS', 'DEU', 'FRA', 'GBR', 'ITA'] 
-        # dyn_tone(tone, actors=['ISR', 'PSE'], alters=o, write=True)
-        #covtone(tone, cooc, ['USA', 'CHN'], 3)
-        media_polarization(events, ['ISR', 'USA'], pd.to_datetime('2023-10-07'), write=True)
-    except FileNotFoundError:
-        print(f'[{Colors.ERROR}!{Colors.RESET}] No file containing dynamic edges found!')
+    toned = pd.read_csv(f'../out/{year}/{n_type}/edges_dynamic.csv')    
+    inflection_date = dyn_tone(toned, actors=actors, alters=alters, write=True)
+    #covtone(tone, cooc, ['USA', 'CHN'], 3)
+    media_polarization(events, actors, pd.to_datetime(inflection_date), write=True)   
 

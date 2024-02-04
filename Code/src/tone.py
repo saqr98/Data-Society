@@ -11,9 +11,9 @@ from preprocess import dynamic, static, create_edges, \
                         create_undirected_network, create_nodes
 
 
-def tone(events: pd.DataFrame, dynam=False, freq='D') -> pd.DataFrame:
+def tone(events: pd.DataFrame, dynam=False, mode=0, freq='D') -> pd.DataFrame:
     # Calculate edge weights using no. of mentions and average tone of an event
-    events['Weight'] = calculate_weight(events['NumMentions'], events['AvgTone'])
+    events['Weight'] = calculate_weight(events['NumMentions'], events['AvgTone'], mode=mode)
     
     # Create static or dynamic network & calculate mean weight for each group
     if dynam:

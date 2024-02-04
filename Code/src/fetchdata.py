@@ -94,7 +94,8 @@ def write_file(blob_no: [], year: str):
     for i in tqdm(range(len(blob_no)), desc='Merging Blobs'):
         try:
             blob = pd.read_csv(f'../data/tmp/year{blob_no[i]}.csv')
-            merged = pd.concat([merged, blob], ignore_index=True)
+            if not blob.empty:
+                merged = pd.concat([merged, blob], ignore_index=True)
         except Exception as e:
             print(blob_no[i])
 
@@ -109,7 +110,7 @@ def clean_tmp():
     try:
         shutil.rmtree('../data/tmp')
     except Exception as e:
-        print(e)
+        print(f'Error with file : {e}')
 
 
 def delete_blobs(bucket_name: str):
@@ -158,7 +159,7 @@ if __name__ == '__main__':
         FROM `gdelt-bq.gdeltv2.events` 
         WHERE Year in (2019) AND Actor1CountryCode != Actor2CountryCode <--
     '''
-    start, end = 854, 1267
+    start, end = 0, 297
     blob_no = [str(num).zfill(12) for num in range(start, end + 1)]
 
     if not os.path.exists('../data/tmp'):
@@ -179,11 +180,11 @@ if __name__ == '__main__':
         results = exec.map(fetch_blobs, args)
     
     # Merge blob files into one
-    write_file(blob_no, year='2019')
+    write_file(blob_no, year='2021')
 
     # Delete Blobs in Google Cloud Storage and files in /tmp
     if len(os.listdir('../data/tmp')) == 1 + end - start:
-        clean_tmp()
+        # clean_tmp()
         delete_blobs(bucket_name=BUCKET_NAME)
         print(f'[{Colors.ERROR}!{Colors.RESET}] Deleted /tmp folder and blob files')
     
