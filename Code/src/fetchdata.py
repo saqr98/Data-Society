@@ -149,13 +149,13 @@ if __name__ == '__main__':
     # fetch_blobs((0, BUCKET_NAME, blob_no))
     with cf.ThreadPoolExecutor() as exec:
         results = exec.map(fetch_blobs, args)
-
-    print(len(os.listdir('../data/tmp')))
+    
     # Merge blob files into one
-    write_file(blob_no, '2018')
+    write_file(blob_no, '2019')
 
     # Delete Blobs in Google Cloud Storage and files in /tmp
-    clean_tmp()
-    delete_blobs(bucket_name=BUCKET_NAME)
+    if len(os.listdir('../data/tmp')) == end - start:
+        clean_tmp()
+        delete_blobs(bucket_name=BUCKET_NAME)
     print(f'[{Colors.ERROR}!{Colors.RESET}] Deleted /tmp folder and blob files')
     print(f'[!] Processing took {time.perf_counter() - start_time}')
