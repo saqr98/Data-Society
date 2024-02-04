@@ -73,16 +73,6 @@ def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:
 def create_nodes(edges: pd.DataFrame):
     # Load country meta-information
     n = pd.read_csv('../data/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
-    
-    # TODO: Create node file with timestamps for nodes
-    # if 'Timeset' in edges.columns:
-    #     edges = edges.groupby(by=['Timeset'])
-    #     s = edges['Source'].unique().tolist()
-    #     t = edges['Target'].unique().tolist()
-    #     print(s)
-    #     print(type(set(s)), t)
-    #     al = set(s + t)
-    #     print(al)
 
     # Retrieve meta-information for countries present in current network
     s = set(edges['Source'].values)

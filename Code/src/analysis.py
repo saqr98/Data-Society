@@ -11,7 +11,7 @@ from preprocess import dynamic
 PATH = '../data/raw/'
 
 
-def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False):
+def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False) -> pd.Series:
     """
     Identify major changes in the tone between two actors. Plot their tone
     and changes and compare the tone of each of them with third actors of
@@ -83,70 +83,10 @@ def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False):
     plt.ylabel('Average Tone')
     plt.title('Average Interaction Tone Over Time')
     plt.legend()
-    plt.show()
 
-
-
-def old_plot_daily_tone(events, actors=(), time_range=0, write=False):
-    """
-    Plot the daily average tone between countries as extracted from
-    news articles writing about their interaction.
-
-    :param events: A DataFrame containing events
-    :param actors: A tuple of two countries using their CountryCodes
-    :param time_range: A specifier for the range to be analyzed
-    :param write: Flag to indiciate whether save plot to a file
-    """
-    # Retrieve entries for specified countries
-    filtered_events = filters.filter_actors(events, [actors[0], actors[1]], ['Source', 'Target'])
-    filtered_events['Weight'] = calculate_weight(filtered_events['NumMentions'], filtered_events['AvgTone'])
-
-    filtered_events['SQLDATE'] = pd.to_datetime(filtered_events['SQLDATE'], format='%Y%m%d')
-
-    # Calculate average per group, then between the two groups
-    # print(filtered_events.dropna(axis=0, subset='SOURCEURL').groupby(['SQLDATE', 'Actor1CountryCode']).agg({'AvgTone': 'mean', 'SOURCEURL': lambda x: ", ".join(x)}))
-    average_tone = filtered_events.groupby(['SQLDATE', 'Actor1CountryCode'])['Weight'].mean().reset_index()
-    print(average_tone)
-    average_tone['Weight'] = average_tone['Weight'].round(3)
-   
-    # Get possible inflection points
-    inflection_points = get_inflections(average_tone['Weight'])
-    print(f'Inflection Points: {inflection_points}')
-
-    ''' TODO: Limitation: --> We are making simplifying assumptions about how a relationship may get changed.
-        For example, it may be changed solely due to an event happening between two actors, but
-        it may very well also happen that the relationship between two actors is influenced not
-        only by an event happening between the two but also due to influences from third actors.
-    '''
-
-    # TODO: Plot inflection points in graph. Verify whether it spreads over consecutive days
-
-
-    # Make plot
-    plt.figure(figsize=(12, 6))
-    # ActorA to ActorB
-    plt.plot(average_tone[(average_tone['Actor1CountryCode'] == actors[0])]['SQLDATE'], 
-            average_tone[(average_tone['Actor1CountryCode'] == actors[0])]['AvgTone'], 
-            label=f'{actors[0]} to {actors[1]}')
-
-    # ActorB to ActorA
-    plt.plot(average_tone[(average_tone['Actor1CountryCode'] == actors[1])]['SQLDATE'], 
-            average_tone[(average_tone['Actor1CountryCode'] == actors[1])]['AvgTone'], 
-            label=f'{actors[1]} to {actors[0]}')
-
-    # Specify x-axis tick time interval and format
-    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    plt.xticks(rotation=45)
-
-    plt.xlabel('Datetime')
-    plt.ylabel('Average Tone')
-    plt.title('Average Interaction Tone Over Time')
-    plt.legend()
-    
     if write:
-        average_tone.to_csv(f'../out/tones/tone_{actors[0]}_{actors[1]}.csv', index=False)
-        plt.savefig(f'../out/tones/plots/tone_{actors[0]}_{actors[1]}.png')
+        plt.savefig(f'../out/analysis/major_inflection_{actors[0]}_{actors[1]}.png')
+        return inflection_dates
     else:
         plt.show()
 
@@ -193,7 +133,7 @@ def covtone(tone: pd.DataFrame, cooc: pd.DataFrame, actors: [], period: int):
     plt.show()
     
 
-def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
+def media_polarization(events: pd.DataFrame, actors: [], inflection_date, extrema=True, write=False):
     """
     A method to plot polarization after a significant inflection
     point in the relationship between two actors.
@@ -202,36 +142,31 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
     as a measure of intensity as well as the tone to plot a third country's 
     position on the inflection point in two dimensions (co-occurrence vs. tone).
     """
-    # Get media to country mapping
-    media = pd.read_csv('../data/media_country_code_mapping.csv')
-
     # Retrieve all entries from specified date onwards for specified actor-pair
+    # and calculate weight
     filtered_events = events[(events['SQLDATE'] >= inflection_date)]
-    filtered_events = filters.filter_actors(filtered_events, actors, ['Actor1CountryCode', 'Actor2CountryCode'])
-    
-    # Filter out all entries from news sources affiliated with the country of any of the two actors
+    filtered_events['Weight'] = calculate_weight(filtered_events['NumMentions'], filtered_events['AvgTone'], mode=1)
+
+    # Get media to country mapping
+    media = pd.read_csv('../data/helper/media_country_code_mapping.csv')
     map_media_to_country_origin(filtered_events, media=media)
-    nactors = ~filtered_events['URLOrigin'].isin(actors)
-    media_filtered = filtered_events[nactors].dropna(subset='URLOrigin')
 
-    # Calculate edge weights using no. of mentions and average tone of an event
-    # TODO: Potentially move to if __name__ before data is passed
-    media_filtered['Weight'] = calculate_weight(media_filtered['NumMentions'], media_filtered['AvgTone'], mode=1)
+    # Calculate average tone, total amount of reporting and amount of event-related 
+    # reporting since inflection point
+    media_filtered = filtered_events.groupby(['URLOrigin']).apply(
+        lambda x: pd.Series({
+                'Tone': x[((x['Actor1CountryCode'] == actors[0]) & (x['Actor2CountryCode'] == actors[1])) |\
+                    ((x['Actor2CountryCode'] == actors[0]) & (x['Actor1CountryCode'] == actors[1]))]['Weight'].mean(),
+                'TopicCount': x[((x['Actor1CountryCode'] == actors[0]) & (x['Actor2CountryCode'] == actors[1])) |\
+                    ((x['Actor2CountryCode'] == actors[0]) & (x['Actor1CountryCode'] == actors[1]))]['Weight'].shape[0],
+                'TotalCount': x.shape[0]
+                }
+            )
+        ).reset_index()
     
-    # Compute co-occurrences and tone
-    media_filtered = media_filtered.groupby(by='URLOrigin').agg(
-        Count=('GLOBALEVENTID', 'count'),
-        Tone=('Weight', 'mean')
-    ).reset_index()
-
-    # TODO: Verify countin etc. is correct --> Weird outliers seem to exist
-    media_filtered = media_filtered[media_filtered['URLOrigin'] != 'USA']
-    # print(media_filtered.groupby('URLOrigin').get_group('USA'))
-
-    # Standardize/ Normalize columns
-    # TODO: Recheck standardization/normalization of columns
-    media_filtered['Tone'] = zscore(media_filtered.Tone)
-    media_filtered['Count'] = normalize(zscore(media_filtered.Count))
+    # Compute fraction of event-related reporting from total amount of reporting
+    media_filtered['TopicShare'] = ((media_filtered['TopicCount'] / media_filtered['TotalCount']) * 100).round(3)  
+    media_filtered = media_filtered.dropna()
 
     # Merge on region
     # https://unstats.un.org/unsd/methodology/m49/overview/
@@ -240,22 +175,55 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
                                           left_on='URLOrigin', 
                                           right_on='ISO', 
                                           how='left')\
-                                    .drop(columns=['ISO', 'Country', 'Sub-region'])\
-                                    .groupby('Region')
+                                    .drop(columns=['ISO', 'Country', 'Sub-region'])
+
+    # Filter out main actors and delete them from media_filtered
+    mask = (media_filtered['URLOrigin'] == actors[0]) | (media_filtered['URLOrigin'] == actors[1])
+    main_actors_filtered = media_filtered[mask]
+    media_filtered = media_filtered[~mask]
 
     # --------------- Create Plot ---------------
     plt.figure(figsize=(12,6))
-    for name, group in media_filtered:
-        plt.scatter(group.Tone, group.Count, label=name)
+    plt.scatter(main_actors_filtered.iloc[0]['Tone'], main_actors_filtered.iloc[0]['TopicShare'], marker='v', c='#731963', label=actors[0])
+    if len(main_actors_filtered) > 1:
+        plt.scatter(main_actors_filtered.iloc[1]['Tone'], main_actors_filtered.iloc[1]['TopicShare'], marker='v', c='#0B3C49', label=actors[1])
+    
+    # Plot entries from individual groups
+    for name, group in media_filtered.groupby('Region'):
+        plt.scatter(group.Tone, group.TopicShare, cmap='tab20c', label=name)
 
-    plt.xlabel('Standardized Tone')
-    plt.ylabel('Normalized Co-Occurrences')
+    # Retrieve extrema from data
+    if extrema:
+        get_extremes(media_filtered)
+
+    # Show or write plot
+    plt.xlabel('Tone')
+    plt.ylabel('Fraction of event-related reporting (%)')
     plt.title(f'Polarization since Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
     plt.legend()
-    plt.show()
+
+    if write:
+        plt.savefig(f'../out/analysis/polarization_scatter_{actors[0]}_{actors[1]}.png')
+    else:
+        plt.show()
+
+
+def get_extremes(data: pd.DataFrame):
+    """
+    A method to plot the difference in polarization before
+    and after a given inflection point.
+    """
+    max_neg = data['Tone'].idxmin()
+    min_neg = data['Tone'].idxmax()
+    max_count = data['TopicShare'].idxmax()
+    min_count = data['TopicShare'].idxmin()
+
+    print(f'Max. neg: {data.loc[max_neg]} -- Min. neg: {data.loc[min_neg]}')
+    print(f'Max. count: {data.loc[max_count]} -- Min. count: {data.loc[min_count]}')
 
 
 if __name__ == '__main__':
+    # IQR (inerquartile rate) outliers detection
     # events = pd.DataFrame(columns=['GLOBALEVENTID', 'SQLDATE', 'Actor1Code', 'Actor1Name', 
     #                                'Actor1CountryCode', 'Actor1Type1Code', 'Actor1Type2Code', 
     #                                'Actor2Code', 'Actor2Name', 'Actor2CountryCode', 'Actor2Type1Code', 
@@ -276,9 +244,9 @@ if __name__ == '__main__':
         cooc = pd.read_csv('../out/edges/cooc_edges_undirected_dyn.csv')
         # plot_daily_tone(events, actors=['ISR', 'PSE'], write=True)
         o = ['USA', 'CHN', 'RUS', 'DEU', 'FRA', 'GBR', 'ITA'] 
-        #dyn_tone(tone, actors=['ISR', 'PSE'], alters=o, write=True)
-        # covtone(tone, cooc, ['USA', 'CHN'], 3)
-        media_polarization(events, ['ISR', 'PSE'], pd.to_datetime('2023-10-07'))
+        # dyn_tone(tone, actors=['ISR', 'PSE'], alters=o, write=True)
+        #covtone(tone, cooc, ['USA', 'CHN'], 3)
+        media_polarization(events, ['ISR', 'USA'], pd.to_datetime('2023-10-07'), write=True)
     except FileNotFoundError:
         print(f'[{Colors.ERROR}!{Colors.RESET}] No file containing dynamic edges found!')
 
