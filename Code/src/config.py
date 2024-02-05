@@ -5,9 +5,13 @@ import os
 # NOTE: Requires db-dtypes package to be installed
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '../../../service_file.json'
 
-# The number of cores to use for the retrieval and processing of data.
+# The number of threads to use for the retrieval and processing of data.
 # REMARK: Change to whatever number fits the machine used for the analysis
 THREADS = 12
+
+# The number of cores to use for the creation of all networks.
+# REMARK: Change to whatever number fits the machine used for the analysis
+CORES = 12
 
 # Google Cloud Storage Bucket name
 # NOTE: Change to whatever name was given to the Bucket

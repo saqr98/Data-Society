@@ -20,8 +20,10 @@ def find_next_date(group, current_date, value):
 
 
 if __name__ == '__main__':
-    # google = google[google['SQLDATE'] == '20150709']
-    # print(google.head(10))
+    df = pd.read_csv('../data/raw/2022.csv', parse_dates=['SQLDATE'])
+
+    df = df[df['SQLDATE'] < '20220501']
+    df.to_csv('../data/20220104.csv', sep=',', index=False)
     MEDIA_COUNTRY_MAPPING = pd.read_csv("../data/media-country_mapping.TXT", sep="\t", names=["Media", "CountryCodeShort", "CountryName"])
     MEDIA_COUNTRY_MAPPING.to_csv('../data/media_country_mapping.csv', sep=',', index=False)
     

@@ -1,15 +1,70 @@
+import os
 import time
 import numpy as np
 import pandas as pd
 import concurrent.futures as cf
 
-from tqdm import tqdm
-from datetime import datetime
-from fetchdata import get_data, fetch_blobs
-from helper import split_into_chunks
+from metrics import *
+from tone import tone
+from config import CORES
+from cooccurrences import cooccurrences
+from helper import split_into_chunks, Colors
+from preprocess import create_undirected_network, create_nodes, create_edges
 
 COL_KEEP = ['GLOBALEVENTID', 'SQLDATE', 'Actor1CountryCode', 'Actor2CountryCode', 
             'EventCode', 'EventBaseCode', 'NumMentions', 'AvgTone', 'SOURCEURL']
+
+
+def create_annual_network(arg: ()):
+    n_type, years = arg[0], arg[1]
+    for year in years:
+        data = pd.read_csv(f'../data/raw/{year}.csv')
+
+        # Create either tone- or coocurrence-based network
+        if n_type == 'tone':
+            dir_ntwk = tone(data, dynam=False)
+        else:
+            dir_ntwk = cooccurrences(data, dynam=False)
+
+        # Make network undirected
+        undir_ntwk = create_undirected_network(dir_ntwk)
+
+        # Create edges and nodes
+        edges = create_edges(undir_ntwk.reset_index())
+        nodes = create_nodes(edges)
+
+        if not os.path.exists(f'../out/{year}/{n_type}'):
+            os.mkdir(f'../out/{year}/{n_type}')
+        
+        if not os.path.exists(f'../out/{year}/{n_type}'):
+            os.mkdir(f'../out/{year}/{n_type}')
+
+        if 'Timeset' in edges.columns:
+            edges.to_csv(f'../out/{year}/{n_type}/edges_undirected_dyn.csv', sep=',', index=False)
+            nodes.to_csv(f'../out/{year}/{n_type}/nodes_dyn.csv', sep=',', index=False)
+
+        else:
+            edges.to_csv(f'../out/{year}/{n_type}/edges_undirected.csv', sep=',', index=False)
+            nodes.to_csv(f'../out/{year}/{n_type}/nodes.csv', sep=',', index=False)
+
+
+def calculate_metrics(arg: ()):
+    n_type, years = arg[0], arg[1]
+    for year in years:
+        edges = pd.read_csv(f'../out/{year}/{n_type}/edges_undirected.csv')
+        nodes = pd.read_csv(f'../out/{year}/{n_type}/nodes.csv')
+
+        # Compute centrality metrics
+        nodes = closeness(nodes, edges)
+        nodes = betweenness(nodes, edges)
+        nodes = eigenvector(nodes, edges)
+
+        # Compute communities
+        score, nodes = modularity(nodes, edges, resolution=1.0)
+        
+        # Write calculated metrics to nodes file
+        nodes.to_csv(f'../out/{year}/{n_type}/nodes.csv', sep=',', index=False)
+        return (year, score)
 
 
 if __name__ == '__main__':
@@ -17,37 +72,34 @@ if __name__ == '__main__':
     # 1. Parse command line arguments
     # 2. Fetch data from Google Cloud
     # 3. Asynchronously process incoming data??
-    # 4. Call both or either Co-occurrences or tone
+    # 4. Call both or either Co-occurrences and/or tone
     # 5. Calculate necessary metrics
     # 6. Perform analyses
     # ------------- TO BE DISCUSSED -------------
+    many = True
+    start, end = 2015, 2024
+    years = np.arange(start, end + 1)
+    n_type = 'tone' # cooccurrence
     
+    # Create static network for single or many/all years available
+    print(f'[{Colors.BLUE}*{Colors.RESET}] Creating {n_type} network for year(s): {years}.')
+    if many:
+        CORES = CORES - (CORES - len(years)) if CORES > len(years) else CORES
+        chunks = list(split_into_chunks(years, CORES))
+        args = [(n_type, chunk) for chunk in chunks]
 
-    # Start & end date
-    # start = np.datetime64('2015-02-18T21:45')
-    # end = np.datetime64('2015-03-31T00:00')
+        with cf.ProcessPoolExecutor() as exec:
+            res_network = exec.map(create_annual_network, args)
+        
+        with cf.ProcessPoolExecutor() as exec:
+            res_metrics = exec.map(calculate_metrics, args)
+            
+            # Write modularity score to file
+            metrics = pd.DataFrame(res_metrics, columns=['Year', 'Modularity Score'])
+            metrics.to_csv('../out/analysis/modularity_scores.csv', index=False)
 
-    # Generate dates with 15-minute intervals
-    # date_range = np.arange(start, end, np.timedelta64(15, 'm'))
-    # date_range = [date.astype(datetime).strftime('%Y%m%d%H%M%S') for date in date_range]
+    else:
 
-    start, end = 0, 767 # , 1963
-    blob_no = [str(num).zfill(12) for num in range(start, end + 1)]
+        create_annual_network((n_type, years))
+        calculate_metrics((n_type, years))
 
-    n_chunks = 12
-    chunks = list(split_into_chunks(blob_no, n_chunks))
-    args = [(i, 'ds_gdelt', chunk) for i, chunk in enumerate(chunks)]
-
-    start_time = time.perf_counter()
-    print(f'[!] {len(blob_no)} requests have to be made to retrieve full year of data')
-    # with cf.ProcessPoolExecutor() as exec:
-    #     results = exec.map(fetch_blobs, args)
-    print(f'[!] Processing took {time.perf_counter() - start_time}')
-
-    main = pd.DataFrame(columns=COL_KEEP)
-    for i in tqdm(range(len(blob_no)), desc='Merging blob files'):
-        blob = pd.read_csv(f'../data/tmp/year{blob_no[i]}.csv')
-        main = pd.concat([main, blob], ignore_index=True)
-
-    main.to_csv('../data/raw/2016.csv', sep=',', index=False)
-    # df.to_csv('../data/raw/2024_test.csv', sep=',', index=False)
