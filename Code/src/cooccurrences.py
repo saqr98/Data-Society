@@ -4,7 +4,6 @@ from preprocess import *
 from metrics import *
 
 
-
 def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=False, freq="D") -> pd.DataFrame:
     """
     Calculates network edges based on the number of cooccurences of each unique pair
@@ -57,7 +56,7 @@ def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=Fals
 
 
 if __name__ == '__main__':
-    events = pd.read_csv("../data/events/all-events-autumn-2023.csv", dtype={"EventCode": 'str',
+    events = pd.read_csv("../data/raw/all-events-autumn-2023.csv", dtype={"EventCode": 'str',
                                                                    "EventBaseCode": 'str',})
     
     ## static network

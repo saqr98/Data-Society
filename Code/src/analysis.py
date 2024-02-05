@@ -2,6 +2,7 @@ import os
 import filters
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -294,6 +295,94 @@ def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, plot_top: int,
         plt.savefig(save_path)
 
 
+def plot_tone_spread(events, trigger_event_date, countries_of_interest, actors_involved, save_path=None):
+
+    trigger_event_date = pd.to_datetime(trigger_event_date)
+
+    events["SQLDATE"] = pd.to_datetime(events['SQLDATE'], format='%Y%m%d')
+
+    events_actors_only = events[
+        ((events.Actor1CountryCode == actors_involved[0]) & (events.Actor2CountryCode == actors_involved[1])) |\
+        ((events.Actor1CountryCode == actors_involved[1]) & (events.Actor2CountryCode == actors_involved[0]))
+    ].copy()
+
+    events_all_before = events[events["SQLDATE"] < trigger_event_date].copy()
+    events_all_after = events[events["SQLDATE"] >= trigger_event_date].copy()
+
+    events_actors_only_before = events_actors_only[events_actors_only["SQLDATE"] < trigger_event_date].copy()
+    events_actors_only_after = events_actors_only[events_actors_only["SQLDATE"] >= trigger_event_date].copy()
+
+    events_of_interest = get_most_frequent_event_codes(events)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+    for events_all_sample, events_actors_only_sample, ax, title in zip([events_all_before, events_all_after], [events_actors_only_before, events_actors_only_after], axes, [f"Before {trigger_event_date.date()}", f"After {trigger_event_date.date()} included"]):
+
+        grouped_all = events_all_sample.groupby(["URLOrigin", "EventCode"]).agg(
+            {
+                "AvgTone": ["mean", "count"]
+            }
+        ).reset_index()
+        grouped_all.columns = ["".join(x) for x in grouped_all.columns.tolist()]
+        grouped_all = grouped_all.rename(
+            {
+            'AvgTonemean': "AvgTone",
+            'AvgTonecount': "Count"
+            }, axis=1
+        )
+        data2plot_all = grouped_all[
+            (grouped_all["EventCode"].isin(events_of_interest)) &\
+            (grouped_all["URLOrigin"].isin(countries_of_interest))
+        ]
+        start_color = 1
+        sns.barplot(
+            data=data2plot_all,
+            x="EventCode",
+            y="AvgTone",
+            hue="URLOrigin",
+            order=events_of_interest,
+            dodge=True,
+            alpha=1,
+            palette=sns.color_palette()[start_color:start_color + len(countries_of_interest)],
+            ax=ax
+        )
+
+        grouped_actors_only = events_actors_only_sample.groupby(["URLOrigin", "EventCode"]).agg(
+            {
+                "AvgTone": ["mean", "count"]
+            }
+        ).reset_index()
+        grouped_actors_only.columns = ["".join(x) for x in grouped_actors_only.columns.tolist()]
+        grouped_actors_only = grouped_actors_only.rename(
+            {
+            'AvgTonemean': "AvgTone",
+            'AvgTonecount': "Count"
+            }, axis=1
+        )
+        data2plot_actors_only = grouped_actors_only[
+            (grouped_actors_only["EventCode"].isin(events_of_interest)) &\
+            (grouped_actors_only["URLOrigin"].isin(countries_of_interest))
+        ]
+        start_color = 1
+        sns.barplot(
+            data=data2plot_actors_only,
+            x="EventCode",
+            y="AvgTone",
+            hue="URLOrigin",
+            order=events_of_interest,
+            dodge=True,
+            alpha=0.5,
+            palette=sns.color_palette()[start_color:start_color + len(countries_of_interest)],
+            ax=ax
+        )
+
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+        ax.set_title(title)
+
+    if save_path is None:
+        plt.show()
+    else:
+        plt.savefig(save_path)
+
 if __name__ == '__main__':
     # events = pd.DataFrame(columns=['GLOBALEVENTID', 'SQLDATE', 'Actor1Code', 'Actor1Name', 
     #                                'Actor1CountryCode', 'Actor1Type1Code', 'Actor1Type2Code', 
@@ -309,7 +398,7 @@ if __name__ == '__main__':
     try:
         #files = ['../data/raw/20231011_All.csv', '../data/raw/20230912202401_All.csv']
         #events = merge_files_read(files=files)
-        events = pd.read_csv("../data/events/all-events-autumn-2023.csv", dtype={"EventCode": 'str',
+        events = pd.read_csv("../data/raw/all-events-autumn-2023.csv", dtype={"EventCode": 'str',
                                                                    "EventBaseCode": 'str',})
     
         events = clean_countrypairs(events)

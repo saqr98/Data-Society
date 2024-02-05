@@ -279,3 +279,28 @@ def generate_random_color():
     # Generate a random RGB color
     color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
     return color
+
+
+def remove_non_country_events(events: pd.DataFrame):
+
+    # Remove entries where Actor1CountryCode or Actor2CountryCode is not a country code (e.g. "EUR")
+    countries = clean_countries(
+        set(events["Actor1CountryCode"]).union(events["Actor2CountryCode"])
+        )
+    old_size = events.shape[0]
+    events = events[np.isin(
+        events[["Actor1CountryCode", "Actor2CountryCode"]], list(countries)
+        ).all(axis=1)].copy()
+    new_size = events.shape[0]
+
+    print(f"Ratio of rows removed: {(old_size - new_size)/old_size:.2f}")
+    
+    return events
+
+
+def get_most_frequent_event_codes(events: pd.DataFrame, top:int = 10, weight_by_num_mentions=True) -> []:
+    if weight_by_num_mentions:
+        return events.groupby("EventCode")["NumMentions"].sum().sort_values(ascending=False)[:top].index.tolist()
+    else:
+        return events["EventCode"].value_counts()[:top].index.tolist()
+    
