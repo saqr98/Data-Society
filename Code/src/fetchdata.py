@@ -7,15 +7,11 @@ import requests
 import pandas as pd
 import concurrent.futures as cf
 
-from config import THREADS, BUCKET_NAME, BASE_URL, SUFFIX
+from config import THREADS, BUCKET_NAME, GDELT_BASE_URL, SUFFIX, FOP_COLS_OLD, FOP_COLS_NEW, COL_KEEP, FOP_BASE_URL
 from tqdm import tqdm
 from google.cloud import storage
 from google.cloud import bigquery as bq
 from helper import Colors, split_into_chunks
-
-
-COL_KEEP = ['GLOBALEVENTID', 'SQLDATE', 'Actor1CountryCode', 'Actor2CountryCode', 
-            'EventCode', 'EventBaseCode', 'NumMentions', 'AvgTone', 'SOURCEURL']
 
 
 def get_data(arg: []):
@@ -40,7 +36,7 @@ def get_data(arg: []):
     col_names = pd.read_csv('../data/helper/data_headers.csv').T.iloc[0].values
     data_year = pd.DataFrame(columns=COL_KEEP)
     for i, date in enumerate(arg[1]):
-        response = session.get(BASE_URL + date + SUFFIX)
+        response = session.get(GDELT_BASE_URL + date + SUFFIX)
         # Check if the request was successful
         print(f'Requested {date} with code: {response.status_code}')
         if response.status_code == 200:
@@ -93,7 +89,7 @@ def write_file(blob_no: [], year: str):
     merged = pd.DataFrame(columns=COL_KEEP)
     for i in tqdm(range(len(blob_no)), desc='Merging Blobs'):
         try:
-            blob = pd.read_csv(f'../data/tmp/year{blob_no[i]}.csv')
+            blob = pd.read_csv(f'../data/tmp/year{blob_no[i]}.csv', dtype={'EventCode': 'str', 'EventBaseCode': 'str'})
             if not blob.empty:
                 merged = pd.concat([merged, blob], ignore_index=True)
         except Exception as e:
@@ -129,7 +125,7 @@ def delete_blobs(bucket_name: str):
         blobs[b].delete()
     
 
-def get_existing(blob_no: []) -> []:
+def get_existing(blob_no: list) -> list:
     """
     In case the download of Blobs from Google Cloud Storage
     has been interrupted or failed, this method checks before
@@ -142,6 +138,45 @@ def get_existing(blob_no: []) -> []:
     existing = [f.split('.')[0][4:] for f in os.listdir('../data/tmp')]
     to_get = set(blob_no) - set(existing)
     return list(to_get)
+
+
+def get_fop(years: list):
+    """
+    Retrieve data on freedom of press from 'Reporters sans frontières'
+    for years of interest.
+
+    It retrieves the Global Score caluculated by RSF for each country
+    based on a questionnaire evaluating freedom of press based on 
+    the following five contexts to determine the press freedom situation
+    in a country: 'political context', 'legal framework', 'economic context', 
+    'sociocultural context' and 'safety'.
+    """
+    fop_data = pd.DataFrame(columns=FOP_COLS_OLD)
+    session = requests.Session()
+    session.headers.update({'User-Agent': 'python-requests/2.25.1'})
+    for year in years:
+        # Request data for specified year from RSF's webpage
+        response = session.get(FOP_BASE_URL + year + '.csv')
+
+        if response.status_code == 200:
+            response.encoding = 'utf-8'
+
+            with open(f'../data/tmp/fop_{year}.csv', 'w') as f:
+                f.write(response.text)
+
+            df = pd.read_csv(f'../data/tmp/{year}.csv', delimiter=';')
+            if year == '2022':
+                # Account for change in methodology used by RSF for FOP index
+                # Store data determined with old and new separately
+                fop_data.to_csv('../data/helper/fop_rsf_15_21.csv', sep=',', index=False)
+                fop_data = pd.DataFrame(columns=FOP_COLS_NEW)
+            
+            fop_data = pd.concat([fop_data, df], ignore_index=True, axis=0)
+        else:
+            print('Data not found at specified URL')
+
+    fop_data.to_csv('../data/helper/fop_rsf_22_23.csv', sep=',', index=False)
+    clean_tmp()
 
 
 if __name__ == '__main__':
@@ -159,7 +194,12 @@ if __name__ == '__main__':
         FROM `gdelt-bq.gdeltv2.events` 
         WHERE Year in (2019) AND Actor1CountryCode != Actor2CountryCode <--
     '''
-    start, end = 0, 297
+    # UNCOMMENT to fetch RSF data on Freedom of Press
+    # years = [str(year) for year in range(2015, 2024)]
+    # get_fop(years=years)
+
+    # Specify Google Cloud Storage blob range
+    start, end = 0, 1974
     blob_no = [str(num).zfill(12) for num in range(start, end + 1)]
 
     if not os.path.exists('../data/tmp'):

@@ -24,7 +24,7 @@ def create_annual_network(arg: ()):
         if n_type == 'tone':
             dir_ntwk = tone(data, dynam=False)
         else:
-            dir_ntwk = cooccurrences(data, dynam=False)
+            dir_ntwk = cooccurrences(data, dynam=False, weight_by_num_mentions=True)
 
         # Make network undirected
         undir_ntwk = create_undirected_network(dir_ntwk)
@@ -77,9 +77,9 @@ if __name__ == '__main__':
     # 6. Perform analyses
     # ------------- TO BE DISCUSSED -------------
     many = True
-    start, end = 2015, 2024
+    start, end = 2015, 2023
     years = np.arange(start, end + 1)
-    n_type = 'tone' # cooccurrence
+    n_type = 'cooccurrence' # 'tone'
     
     # Create static network for single or many/all years available
     print(f'[{Colors.BLUE}*{Colors.RESET}] Creating {n_type} network for year(s): {years}.')
@@ -96,10 +96,9 @@ if __name__ == '__main__':
             
             # Write modularity score to file
             metrics = pd.DataFrame(res_metrics, columns=['Year', 'Modularity Score'])
-            metrics.to_csv('../out/analysis/modularity_scores.csv', index=False)
+            metrics.to_csv(f'../out/analysis/{n_type}_modularity_scores.csv', index=False)
 
     else:
-
         create_annual_network((n_type, years))
         calculate_metrics((n_type, years))
 

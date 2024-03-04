@@ -43,7 +43,7 @@ def betweenness(nodes: pd.DataFrame, edges: pd.DataFrame):
     graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='Weight')
     
     # Calculate Betweenness Centrality and create DataFrame
-    bc = nx.betweenness_centrality(graph, weight='weight', normalized=True)
+    bc = nx.betweenness_centrality(graph, normalized=True, weight='Weight')
     bc_df = pd.DataFrame(list(bc.items()), columns=['ID', 'BetweennessCentrality'])
 
     # Merge results with list of nodes and write to orginal file
@@ -64,7 +64,7 @@ def closeness(nodes: pd.DataFrame, edges: pd.DataFrame):
     graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='Weight')
     
     # Calculate Closeness Centrality and create DataFrame
-    cc = nx.closeness_centrality(graph, distance='weight')
+    cc = nx.closeness_centrality(graph, distance='Weight')
     cc_df = pd.DataFrame(list(cc.items()), columns=['ID', 'ClosenessCentrality'])
 
     # Merge results with list of nodes and write to orginal file
@@ -78,7 +78,7 @@ def eigenvector(nodes: pd.DataFrame, edges: pd.DataFrame):
     graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='Weight')
     
     # Calculate Closeness Centrality and create DataFrame
-    eigen = nx.eigenvector_centrality(graph, weight='weight')
+    eigen = nx.eigenvector_centrality(graph, weight='Weight')
     eigen_df = pd.DataFrame(list(eigen.items()), columns=['ID', 'EigenvectorCentrality'])
 
     # Merge results with list of nodes and write to orginal file
