@@ -6,6 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+from itertools import product
 from helper import *
 from tone import tone
 from cooccurrences import cooccurrences
@@ -179,7 +180,7 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
 
     # Merge on region
     # https://unstats.un.org/unsd/methodology/m49/overview/
-    regions = pd.read_csv('../data/country_region.csv')
+    regions = pd.read_csv('../data/helper/country_region.csv')
     media_filtered = media_filtered.merge(right=regions, 
                                           left_on='URLOrigin', 
                                           right_on='ISO', 
@@ -203,7 +204,7 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date):
         plt.show()
 
 
-def create_dynamic_centrality_metric_table(edges: pd.DataFrame, nodes: pd.DataFrame, metric_name: str, metric_func: callable) -> pd.DataFrame:
+def create_dynamic_centrality_metric_table(edges: pd.DataFrame, nodes: pd.DataFrame, metric_name: str, metric_func: callable, use_weights=True) -> pd.DataFrame:
     """
     Helper tabular data generator for plot_centrality_over_time().
 
@@ -229,7 +230,8 @@ def create_dynamic_centrality_metric_table(edges: pd.DataFrame, nodes: pd.DataFr
     for time_period in edges.Timeset.unique():
         metric_score = metric_func(
             nodes=nodes,
-            edges=edges[edges.Timeset == time_period]
+            edges=edges[edges.Timeset == time_period],
+            use_weights=use_weights
         )
         metric_score.set_index("ID", inplace=True)
     
@@ -247,24 +249,37 @@ def create_dynamic_centrality_metric_table(edges: pd.DataFrame, nodes: pd.DataFr
     return metric_score_dynamic
 
 
-def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, plot_top: int, xlabel="Time Period", ylabel="", save_path=None):
+def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, n_top: int, plot_superpowers_only=False, plot_all=True, xlabel="Time Period", ylabel="", save_path=None):
     """
     Plots centrality metrics of countries for a list of periods of time.
 
     :param metric_score_dynamic: Output of create_dynamic_centrality_metric_table()
-    :param plot_top: How many countries with the highest centraity score to plot in the graph
+    :param n_top: How many countries with the highest centraity score to plot in the graph
+    :param plot_superpowers_only:
+        True: Plot only Russia, USA, and China
+        False: Plot countries with highest centralities (# of countries defined by `n_top`) excluding Russia, USA, and China
+    :param plot_all: Plot countries with highest centralities (# of countries defined by `n_top`)
     :param xlabel: X-axis label to plot
     :param ylabel: Y-axis label to plot (you want to put name of the centrality metric here)
     :param save_path: Path to save the graph. If None, just show the graph in runtime.
     """
     df = metric_score_dynamic.copy()
+    superpowers = ["RUS", "USA", "CHN"]
+
+    if plot_all:
+        pass    
+    elif plot_superpowers_only:
+        df = df.loc[superpowers,:]
+        n_top = len(superpowers)
+    else:
+        df = df[~df.index.isin(superpowers)]
 
     # Dictionary to assign color to each country
     country_colors = {}
     plt.figure(figsize=(10, 15))
     for time_period in df.columns:
-        # Sort by centrality and take first plot_top countries that will appear in the graph
-        subset = df.sort_values(by=time_period, ascending=False).iloc[:plot_top].loc[:,time_period]
+        # Sort by centrality and take first n_top countries that will appear in the graph
+        subset = df.sort_values(by=time_period, ascending=False).iloc[:n_top].loc[:,time_period]
         # Assign a randomly generated color to each country in top selected
         country_colors.update({key: generate_random_color() for key in subset.index if key not in country_colors.keys()})
         for country in subset.index:
@@ -278,9 +293,9 @@ def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, plot_top: int,
     for country, color in country_colors.items():
         line2plot = pd.DataFrame(columns=["Timeperiod", "Score"])
         for time_period in df.columns:
-            subset = df.sort_values(by=time_period, ascending=False).iloc[:plot_top].loc[:,time_period]
+            subset = df.sort_values(by=time_period, ascending=False).iloc[:n_top].loc[:,time_period]
             if country in subset.index:
-                # TODO: Fix the following: if country appears in plot_top for, say, September and November,
+                # TODO: Fix the following: if country appears in n_top for, say, September and November,
                 # but not for October, there will be a straight line from September to November crossing
                 # October. We want to connect only those dots that reside in neighbouring time periods.
                 line2plot.loc[len(line2plot)] ={"Timeperiod": time_period, "Score": subset.loc[country]}
@@ -301,7 +316,32 @@ def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, plot_top: int,
         plt.savefig(save_path)
 
 
-def plot_tone_spread(events, trigger_event_date, countries_of_interest, actors_involved, save_path=None):
+def plot_tone_spread(events, trigger_event_date:str, countries_of_interest:list[str], actors_involved:list[str], save_path:str=None, output_statistics=True):
+    """
+    Plots the tone spread of specified countries before and after the inflection point of the
+    analyzed key event. Note: "key event" refers to a significant occurrence globally,
+    not to be confused with an "event" as an entry in the GDELT database. In addition, 
+    the function generates descriptive statistics file of `events` data and saves it latex format.
+
+    :param events: Raw GDELT events table
+
+    :param trigger_event_date: Date of the inflection point. Data is divided into
+    "Before" and "After" categories accroding to this date.
+    :type trigger_event_date: String of "YYYYMMDD" format
+
+    :param countries_of_interest: Average tone of media outlets of these countries will be analysed
+    :param actors_involved: List of countries directly involved in the key event
+    :param save_path: Path to save the graph, if None the graph will be displayed but not saved
+    :param output_statistics: Whether to output latex statistics file
+    """
+
+    directory = os.path.dirname(save_path)
+    img_file = os.path.basename(save_path)
+
+    if output_statistics:
+        statistics = open(directory + f"/{img_file.split('.')[0]}.txt", "w+")
+        statistics_all_df, statistics_actors_only_df = pd.DataFrame(), pd.DataFrame()
+
 
     trigger_event_date = pd.to_datetime(trigger_event_date)
 
@@ -321,7 +361,8 @@ def plot_tone_spread(events, trigger_event_date, countries_of_interest, actors_i
     events_of_interest = get_most_frequent_event_codes(events)
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
-    for events_all_sample, events_actors_only_sample, ax, title in zip([events_all_before, events_all_after], [events_actors_only_before, events_actors_only_after], axes, [f"Before {trigger_event_date.date()}", f"After {trigger_event_date.date()} included"]):
+
+    for events_all_sample, events_actors_only_sample, ax, title in zip([events_all_before, events_all_after], [events_actors_only_before, events_actors_only_after], axes, [f"Two months before {trigger_event_date.date()}", f"Two months after {trigger_event_date.date()} (included)"]):
 
         grouped_all = events_all_sample.groupby(["URLOrigin", "EventCode"]).agg(
             {
@@ -339,6 +380,16 @@ def plot_tone_spread(events, trigger_event_date, countries_of_interest, actors_i
             (grouped_all["EventCode"].isin(events_of_interest)) &\
             (grouped_all["URLOrigin"].isin(countries_of_interest))
         ]
+
+        if output_statistics:
+            statistics_all_df = pd.concat([
+                statistics_all_df,
+                grouped_all[grouped_all["URLOrigin"].isin(countries_of_interest)]\
+                  .sort_values("Count", ascending=True)\
+                  .groupby("URLOrigin")['AvgTone']\
+                  .agg(['mean', 'min', 'max']).T
+            ], axis=1)
+    
         start_color = 1
         sns.barplot(
             data=data2plot_all,
@@ -368,6 +419,16 @@ def plot_tone_spread(events, trigger_event_date, countries_of_interest, actors_i
             (grouped_actors_only["EventCode"].isin(events_of_interest)) &\
             (grouped_actors_only["URLOrigin"].isin(countries_of_interest))
         ]
+
+        if output_statistics:
+            statistics_actors_only_df = pd.concat([
+                statistics_actors_only_df,
+                grouped_actors_only[grouped_actors_only["URLOrigin"].isin(countries_of_interest)]\
+                  .sort_values("Count", ascending=True)\
+                  .groupby("URLOrigin")['AvgTone']\
+                  .agg(['mean', 'min', 'max']).T,
+            ], axis=1)
+        
         start_color = 1
         sns.barplot(
             data=data2plot_actors_only,
@@ -389,24 +450,23 @@ def plot_tone_spread(events, trigger_event_date, countries_of_interest, actors_i
     else:
         plt.savefig(save_path)
 
+    
+    if output_statistics:
+
+        statistics_df = pd.concat([
+            statistics_all_df,
+            statistics_actors_only_df
+        ], axis=0, keys=["All events", "RUS-UKR events only"])
+
+        statistics_df.columns = pd.MultiIndex.from_tuples(
+        [("Before", col) if i < len(countries_of_interest) else ("After", col) for i, col in enumerate(statistics_df.columns)]
+        )
+    
+        print(statistics_df)
+
+        statistics.write(statistics_df.to_latex(float_format=lambda x: f'{x:.2f}'.rstrip('0').rstrip('.')))
+        statistics.close()
+
 if __name__ == '__main__':
-    # IQR (inerquartile rate) outliers detection
-    year = 2023
-    n_type = 'tone'
-    actors = ['ISR', 'PSE']
-    alters = ['USA', 'CHN', 'RUS', 'DEU', 'FRA', 'GBR', 'ITA'] 
-    events = pd.read_csv(f'../data/raw/{year}.csv', parse_dates=['SQLDATE'])
-    events = clean_countrypairs(events)
-
-    # If dynamic network does not exist for specified year
-    if not any('dynamic' in f for f in os.listdir(f'../out/{year}/{n_type}')):
-        toned = tone(events, dynam=True, mode=1)
-        undir = create_undirected_network(toned)
-        edges = create_edges(undir.reset_index())
-        edges.to_csv(f'../out/{year}/{n_type}/edges_dynamic.csv', sep=',', index=False)
-
-    toned = pd.read_csv(f'../out/{year}/{n_type}/edges_dynamic.csv')    
-    inflection_date = dyn_tone(toned, actors=actors, alters=alters, write=True)
-    #covtone(tone, cooc, ['USA', 'CHN'], 3)
-    media_polarization(events, actors, pd.to_datetime(inflection_date), write=True)   
+    pass
 
