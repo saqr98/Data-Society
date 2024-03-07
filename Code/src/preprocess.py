@@ -72,7 +72,7 @@ def create_undirected_network(network_directed: pd.DataFrame) -> pd.DataFrame:
 
 def create_nodes(edges: pd.DataFrame):
     # Load country meta-information
-    n = pd.read_csv('../data/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
+    n = pd.read_csv('../data/helper/countries_codes_and_coordinates.csv', usecols=[0,2,3,4,5])
 
     # Retrieve meta-information for countries present in current network
     s = set(edges['Source'].values)
