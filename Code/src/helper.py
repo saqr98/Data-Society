@@ -1,6 +1,9 @@
 import re
 import numpy as np
 import pandas as pd
+import tldextract as tld
+
+from config import FOP_COLS_NEW, FOP_COLS_OLD
 import random
 
 
@@ -292,14 +295,55 @@ def map_media_to_country_origin(df: pd.DataFrame, media: pd.DataFrame) -> None:
     "(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?([a-zA-Z0-9\-\_]{2,}(\.[a-zA-Z0-9]{2,})(\.[a-zA-Z0-9]{2,})?)"
     )
     temp = pd.DataFrame()
-    temp.loc[:, "Media"] = df["SOURCEURL"].str.extract(regex).iloc[:, 1]
+    # temp.loc[:, "Media"] = df["SOURCEURL"].str.extract(regex).iloc[:, 1]
+    # Use external library to correctly extract domain and top-level domain from URL
+    temp.loc[:, 'Media'] = df["SOURCEURL"].apply(lambda x: tld.extract(x).domain + '.' + tld.extract(x).suffix)
     temp = temp.merge(
         media[["Media", "CountryName", "CountryCode"]],
         how="left",
         on="Media"
     )
+    df.loc[:, "NewsOutlet"] = temp.loc[:, "Media"].values
     df.loc[:, "URLOrigin"] = temp.loc[:, "CountryCode"].values
     del temp
+
+
+def get_fpi_score(data: pd.DataFrame, fop: pd.DataFrame, col: str) -> pd.DataFrame:
+    fop[col] = fop[col].apply(lambda x: _convert_fpi(x))
+    fop['Class'] = fop[col].apply(lambda x: _get_fpi_class(x))
+    data = data.merge(fop[['ISO', col, 'Class']], 
+                      left_on='URLOrigin', 
+                      right_on='ISO', 
+                      how='left')\
+                .drop(columns=['ISO'])
+    print(data)
+    return data               
+
+def _get_fpi_class(x: str) -> str:
+    if x >= 85.0:
+        return 'good'
+    elif 70.0 <= x < 85.0:
+        return 'satisfactory'
+    elif 55.0 <= x < 70.0:
+        return 'problematic'
+    elif 40.0 <= x < 55.0:
+        return 'difficult'
+    else:
+        return 'very serious'
+    
+
+def _convert_fpi(x: str) -> float:
+    """
+    This method converts comma-separated floats to 
+    '.'-delimited floats for correct processing.
+
+    :param x: Comma-separated string representation of float
+    :return: Python float
+    """
+    x = x.split(',')
+    return float(x[0] + '.' + x[1]) if len(x) > 1 else float(x[0] + '.0')
+    
+
 
 def generate_random_color():
     # Generate a random RGB color
