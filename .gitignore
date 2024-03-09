@@ -18,6 +18,7 @@ __pycache__
 
 # And this folder
 !Code/
+
 # Code/data/helper/
 # Code/data/*.csv
 Code/data/raw/
@@ -31,5 +32,5 @@ Code/src/__pycache__/
 Code/src/temp.py
 
 
-out/
+Code/out/
 # !Code/data
