@@ -1,5 +1,6 @@
 import os
 import time
+import shutil
 import numpy as np
 import pandas as pd
 import concurrent.futures as cf
@@ -9,8 +10,9 @@ from visualize import *
 from tone import tone
 from config import CORES
 from cooccurrences import cooccurrences
-from helper import split_into_chunks, Colors
+from helper import split_into_chunks, clean_dir, Colors
 from preprocess import create_undirected_network, create_nodes, create_edges
+
 
 COL_KEEP = ['GLOBALEVENTID', 'SQLDATE', 'Actor1CountryCode', 'Actor2CountryCode', 
             'EventCode', 'EventBaseCode', 'NumMentions', 'AvgTone', 'SOURCEURL']
@@ -36,9 +38,6 @@ def create_annual_network(n_type, years, dynam):
 
         if not os.path.exists(f'../out/{year}/{n_type}'):
             os.mkdir(f'../out/{year}/{n_type}')
-        
-        if not os.path.exists(f'../out/{year}/{n_type}'):
-            os.mkdir(f'../out/{year}/{n_type}')
 
         if 'Timeset' in edges.columns:
             edges.to_csv(f'../out/{year}/{n_type}/edges_undirected_dyn.csv', sep=',', index=False)
@@ -56,8 +55,8 @@ def calculate_metrics(n_type, years):
         nodes = pd.read_csv(f'../out/{year}/{n_type}/nodes.csv')
 
         # Compute centrality metrics
-        nodes = closeness(nodes, edges)
         nodes = betweenness(nodes, edges)
+        nodes = closeness(nodes, edges)
         nodes = eigenvector(nodes, edges)
 
         # Compute communities

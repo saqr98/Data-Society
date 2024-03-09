@@ -266,7 +266,7 @@ def plot_polarization_fop(dfs: list, actors: list, inflection_date, stat_test=Tr
     # Show or write plot
     plt.xlabel('Tone')
     plt.ylabel('Fraction of event-related reporting (%)')
-    plt.title(f'Press Freedom Index-based visualization of polarization since Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
+    # plt.title(f'Polarization based on Press Freedom since Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
     plt.legend()
 
     if write:
@@ -347,7 +347,7 @@ def plot_polarization_before_after(dfs: list, actors: list, inflection_date, sta
     # Show or write plot
     plt.xlabel('Tone')
     plt.ylabel('Fraction of event-related reporting (%)')
-    plt.title(f'Polarization before/after Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
+    # plt.title(f'Polarization before/after Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
     plt.legend()
 
     if write:
@@ -360,6 +360,22 @@ def plot_polarization_before_after(dfs: list, actors: list, inflection_date, sta
 
 
 def plot_correlation(matrix: pd.DataFrame):
+    """fig, ax = plt.subplots()
+    cax = ax.imshow(matrix, cmap='coolwarm', interpolation='nearest')
+
+    # Add a colorbar
+    fig.colorbar(cax)
+
+    # Add tick marks and labels
+    ticks = np.arange(len(matrix.columns))
+    plt.xticks(ticks, matrix.columns, rotation=45)
+    plt.yticks(ticks, matrix.index)
+
+    # Add text annotations
+    for i in range(len(matrix.columns)):
+        for j in range(len(matrix.index)):
+            text = ax.text(j, i, round(matrix.iloc[i, j], 2),
+                           ha="center", va="center", color="w")"""
     # Set the style of the visualization
     sns.set_theme(style="white")
 
@@ -371,10 +387,10 @@ def plot_correlation(matrix: pd.DataFrame):
     cmap = sns.diverging_palette(230, 20, as_cmap=True)
 
     # Redraw the heatmap with all necessary components correctly defined
-    sns.heatmap(matrix, mask=mask, cmap=cmap, center=0,
-                square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True)
+    sns.heatmap(matrix, cmap=cmap, mask=mask, center=0, fmt='.3f', annot=True,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot_kws={'fontsize': 12})
 
-    plt.title('Event-related Correlation Matrix')
+    # plt.title('Event-related Correlation Matrix')
     plt.savefig('../out/analysis/RUS_UKR/FPI/corr.png', dpi=1200)
     plt.close()
 
@@ -777,8 +793,8 @@ if __name__ == '__main__':
     # n_type = 'tone'
     actors = ['RUS', 'UKR']
     # alters = ['USA', 'CHN', 'RUS', 'DEU', 'FRA', 'GBR', 'ITA'] 
-    #events = pd.read_csv(f'../data/raw/{year}.csv', parse_dates=['SQLDATE'])
-    #events = clean_countrypairs(events)
+    events = pd.read_csv(f'../data/raw/{year}.csv', parse_dates=['SQLDATE'])
+    events = clean_countrypairs(events)
 
     # # If dynamic network does not exist for specified year
     # if not any('dynamic' in f for f in os.listdir(f'../out/{year}/{n_type}')):
@@ -793,8 +809,8 @@ if __name__ == '__main__':
     # cooc = pd.read_csv('../out/2023/cooccurrence/edges_undirected_dyn.csv')
     # # covtone(toned, cooc, ['ISR', 'PSE'], 3, write=True)
     #media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0], write=True)   
-    #media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0,1], write=True)   
-    # media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[2], write=True) 
+    # media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0,1], write=True)
+    media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[2], write=True) 
 
-    plot_total_news_annual()  
+    # plot_total_news_annual()  
 
