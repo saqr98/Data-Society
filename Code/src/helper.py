@@ -1,4 +1,5 @@
 import re
+import shutil
 import numpy as np
 import pandas as pd
 import tldextract as tld
@@ -86,6 +87,17 @@ def stitch_files_write(no: int):
     all_nodes.to_csv('../out/nodes/nodes_all_stitched.csv', sep=',', index=False)
     all_edges.to_csv('../out/edges/edges_all_stitched.csv', sep=',', index=False)
 
+
+def clean_dir(path: str):
+    """
+    Delete sepcified folder and its contents after merging
+    everything into a single file in `write_file()` or if
+    networks should be regenerated.
+    """
+    try:
+        shutil.rmtree(path)
+    except Exception as e:
+        print(f'Error with file : {e}')
 
 # ---------------------------- PROCESSING ----------------------------
             
@@ -315,8 +327,7 @@ def get_fpi_score(data: pd.DataFrame, fop: pd.DataFrame, col: str) -> pd.DataFra
                       right_on='ISO', 
                       how='left')\
                 .drop(columns=['ISO'])
-    print(data)
-    return data               
+    return data
 
 def _get_fpi_class(x: str) -> str:
     if x >= 85.0:

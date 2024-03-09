@@ -1,7 +1,6 @@
 import os
 import io
 import time
-import shutil
 import zipfile
 import requests
 import pandas as pd
@@ -11,7 +10,7 @@ from config import THREADS, BUCKET_NAME, GDELT_BASE_URL, SUFFIX, FOP_COLS_OLD, F
 from tqdm import tqdm
 from google.cloud import storage
 from google.cloud import bigquery as bq
-from helper import Colors, split_into_chunks
+from helper import Colors, split_into_chunks, clean_dir
 
 
 def get_data(arg: []):
@@ -98,17 +97,6 @@ def write_file(blob_no: [], year: str):
     merged.to_csv(f'../data/raw/{year}.csv', sep=',', index=False)
 
 
-def clean_tmp():
-    """
-    Delete /tmp folder and its contents after merging
-    everything into a single file in `write_file()`.
-    """
-    try:
-        shutil.rmtree('../data/tmp')
-    except Exception as e:
-        print(f'Error with file : {e}')
-
-
 def delete_blobs(bucket_name: str):
     """
     Delete all Blobs in the specified Google Cloud
@@ -176,7 +164,7 @@ def get_fop(years: list):
             print('Data not found at specified URL')
 
     fop_data.to_csv('../data/helper/fop_rsf_22_23.csv', sep=',', index=False)
-    clean_tmp()
+    clean_dir('../data/tmp')
 
 
 if __name__ == '__main__':
