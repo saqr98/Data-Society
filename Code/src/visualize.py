@@ -29,6 +29,7 @@ FOP_NEW = pd.read_csv('../data/helper/fop_rsf_22_23.csv')
 FOP_OLD = pd.read_csv('../data/helper/fop_rsf_15_21.csv')
 
 
+# ------------------ EVENT POLARIZATION ------------------
 def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False) -> pd.Series:
     """
     Identify major changes in the tone between two actors. Plot their tone
@@ -155,7 +156,7 @@ def covtone(tone: pd.DataFrame, cooc: pd.DataFrame, actors: [], period: int, wri
         plt.show()
     
 
-def media_polarization(events: pd.DataFrame, actors: [], inflection_date, mode=[0], extrema=True, fop=True, write=False):
+def media_polarization(events: pd.DataFrame, actors: [], inflection_date, mode=[0], stat_test=True, write=True) -> None:
     """
     A method to plot polarization before and/or after a significant inflection
     point in the relationship between two actors.
@@ -231,14 +232,14 @@ def media_polarization(events: pd.DataFrame, actors: [], inflection_date, mode=[
 
     # --------------- Create Plots ---------------
     if mode == [0]:
-        plot_polarization_after(dfs, actors, inflection_date)
+        plot_polarization_after(dfs, actors, inflection_date, stat_test, write)
     elif mode == [0, 1]:
-        plot_polarization_before_after(dfs, actors, inflection_date)
+        plot_polarization_before_after(dfs, actors, inflection_date, stat_test, write)
     else:
-        plot_polarization_fop(dfs, actors, inflection_date)
+        plot_polarization_fop(dfs, actors, inflection_date, stat_test, write)
 
 
-def plot_polarization_fop(dfs: list, actors: list, inflection_date, stat_test=True, write=True):
+def plot_polarization_fop(dfs: list, actors: list, inflection_date, stat_test=True, write=True) -> None:
     res = pd.DataFrame()
     colours = {'good': '#cbe17a', 'satisfactory': '#e5c557', 
                'problematic': '#d79c5d', 'difficult': '#cf6b46', 
@@ -266,19 +267,19 @@ def plot_polarization_fop(dfs: list, actors: list, inflection_date, stat_test=Tr
     # Show or write plot
     plt.xlabel('Tone')
     plt.ylabel('Fraction of event-related reporting (%)')
-    # plt.title(f'Polarization based on Press Freedom since Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
+    plt.title(f'Polarization based on Press Freedom since Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
     plt.legend()
 
     if write:
         path = f'../out/analysis/{actors[0]}_{actors[1]}/FPI'
         res.to_csv(f'{path}/fpi_data.csv', index=False)
-        plt.savefig(f'{path}/fpi_scatter_{actors[0]}_{actors[1]}.png', dpi=1200)
+        plt.savefig(f'{path}/fpi_scatter_{actors[0]}_{actors[1]}.png', dpi=800)
         plt.close()
     else:
         plt.show()
 
 
-def plot_polarization_after(dfs: list, actors: list, inflection_date, stat_test=True, write=True):
+def plot_polarization_after(dfs: list, actors: list, inflection_date, stat_test=True, write=True) -> None:
     res = pd.DataFrame()
     plt.figure(figsize=(12,6), dpi=1200)
     for _, main_actors, media_data in dfs:
@@ -306,13 +307,13 @@ def plot_polarization_after(dfs: list, actors: list, inflection_date, stat_test=
     if write:
         path = f'../out/analysis/{actors[0]}_{actors[1]}/After'
         res.to_csv(f'{path}/a_data.csv', index=False)
-        plt.savefig(f'{path}/a_polarization_scatter_{actors[0]}_{actors[1]}.png', dpi=1200)
+        plt.savefig(f'{path}/a_polarization_scatter_{actors[0]}_{actors[1]}.png', dpi=800)
         plt.close()
     else:
         plt.show()
 
 
-def plot_polarization_before_after(dfs: list, actors: list, inflection_date, stat_test=True, write=True):
+def plot_polarization_before_after(dfs: list, actors: list, inflection_date, stat_test=True, write=True) -> None:
     """
     Plots the event-related polarization before and after the inflection point
     for all countries including the two actors involved in the event.
@@ -347,37 +348,21 @@ def plot_polarization_before_after(dfs: list, actors: list, inflection_date, sta
     # Show or write plot
     plt.xlabel('Tone')
     plt.ylabel('Fraction of event-related reporting (%)')
-    # plt.title(f'Polarization before/after Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
+    plt.title(f'Polarization before/after Inflection Point on {str(inflection_date).split(" ")[0]} -- ({actors[0]},{actors[1]})')
     plt.legend()
 
     if write:
         path = f'../out/analysis/{actors[0]}_{actors[1]}/Period'
         res.to_csv(f'{path}/ba_data.csv', index=False)
-        plt.savefig(f'{path}/ba_polarization_scatter_{actors[0]}_{actors[1]}.png', dpi=1200)
+        plt.savefig(f'{path}/ba_polarization_scatter_{actors[0]}_{actors[1]}.png', dpi=800)
         plt.close()
     else:
         plt.show()
 
 
-def plot_correlation(matrix: pd.DataFrame):
-    """fig, ax = plt.subplots()
-    cax = ax.imshow(matrix, cmap='coolwarm', interpolation='nearest')
-
-    # Add a colorbar
-    fig.colorbar(cax)
-
-    # Add tick marks and labels
-    ticks = np.arange(len(matrix.columns))
-    plt.xticks(ticks, matrix.columns, rotation=45)
-    plt.yticks(ticks, matrix.index)
-
-    # Add text annotations
-    for i in range(len(matrix.columns)):
-        for j in range(len(matrix.index)):
-            text = ax.text(j, i, round(matrix.iloc[i, j], 2),
-                           ha="center", va="center", color="w")"""
+def plot_correlation(matrix: pd.DataFrame) -> None:
     # Set the style of the visualization
-    sns.set_theme(style="white")
+    sns.set_theme(style="white", font_scale=1.5)
 
     # Create a mask to display only one half of the symmetric correlation matrix
     mask = np.triu(np.ones_like(matrix, dtype=bool))
@@ -391,139 +376,11 @@ def plot_correlation(matrix: pd.DataFrame):
                 square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot_kws={'fontsize': 12})
 
     # plt.title('Event-related Correlation Matrix')
-    plt.savefig('../out/analysis/RUS_UKR/FPI/corr.png', dpi=1200)
+    plt.savefig('../out/analysis/RUS_UKR/FPI/corr.png', dpi=800)
     plt.close()
 
 
-def plot_media_share_discrete(years: list, granularity='Region', top=15):
-    """
-    A method to retrieve the share of news outlets per country per year.
-    The number of countries for which to plot their share can be regulated
-    via the 'top'-parameter and will default to the Top 15 otherwise.
-
-    :param data: A DataFrame containing the necessary shares to plot
-    :param years: The years for which to plot the data
-    :param granularity: The granularity [Region, Sub-Region] by which to group and plot
-    :param top: A regulating parameter to determine how many countries should be plotted
-    """    
-    if 'gdelt_media_evolution.csv' in os.listdir('../out/analysis'):
-        for year in years:
-            data = pd.read_csv('../out/analysis/gdelt_media_evolution.csv')
-            data = data[data['Year'] == int(year)]
-            data = data.sort_values(by='CountryShare', ascending=False).head(top).reset_index()
-            
-            # --------------- Create Plot ---------------
-            plt.figure(figsize=(12,6), dpi=1200)
-            for name, group in data.groupby(by=granularity):
-                plt.bar(group.URLOrigin, group.CountryShare, label=name)
-
-            plt.xlabel('Country')
-            plt.ylabel('%-Share of country-affiliated news outlets')
-            plt.title(f'The Top {top} share of country-affiliated news outlets in {year.split(".")[0]}')
-            plt.legend(title=granularity)
-            plt.savefig(f'../out/analysis/{granularity}_discrete_media_share_{year.split(".")[0]}.png', dpi=1200)
-
-    else:
-        print('Requires running `plot_media_share_continuous()` first.')
-        exit(1)
-
-
-def plot_media_share_continuous(years: list, granularity='Region'):
-    """
-    Plot the share each regions makes up in the number of written news articles
-    versus the total amount of written articles for that year. Plot the continuous
-    evolution over the years.
-
-    :param years: A list of years for which to plot the evolution of GDELT media shares
-    :param granularity: The granularity [Region, Sub-Region] by which to group and plot
-    """
-    if 'gdelt_media_evolution.csv' not in os.listdir('../out/analysis'):
-        evolution = pd.DataFrame()
-        for year in years:
-            print(year)
-            data = pd.read_csv(f'../data/raw/{year}.csv')
-            data = clean_countrypairs(data)
-            # Drop entries for which no SOURCEURL is given
-            data.dropna(subset=['SOURCEURL'], inplace=True)
-
-            # Merge on media and region
-            map_media_to_country_origin(data, media=MEDIA)
-            merged_data = data.merge(right=REGIONS, left_on='URLOrigin', 
-                                    right_on='ISO', how='left')\
-                                    .drop(columns=['ISO', 'Country'])
-            
-            # Calculate per Region Share
-            total = len(data['NewsOutlet'].unique())
-            region_data = merged_data.groupby(by='Region').apply(
-                lambda x: pd.Series({
-                    'RegionShare': len(x['NewsOutlet'].unique()) / total,
-                    
-                })
-            ).reset_index()
-            # print(f'Region: {region_data}')
-
-            # TODO: Fix sub-regions
-            # subregion_data = merged_data.groupby(by='Sub-region').apply(
-            #     lambda x: pd.Series({
-            #         'SubRegionShare': len(x['NewsOutlet'].unique()) / total,
-            #         'Region': x['Region'].iloc[0]
-            #     })
-            # ).reset_index()
-            
-            # print(merged_data.columns)
-            # subregion_data = merged_data.merge(subregion_data, on='Sub-region', how='left')\
-            #                             .drop(columns=COL_KEEP_ANALYSIS + ['Region_y'])\
-            #                             .rename(columns={'Region_x': 'Region'})
-            # print(subregion_data)
-            # # print(f'Sub-Region: {subregion_data.head(10)}')
-
-            # Calculate per Country Share
-            country_data = merged_data.groupby(by='URLOrigin').apply(
-                lambda x: pd.Series({
-                    'CountryShare': (len(x['NewsOutlet'].unique()) / total),
-                    'Region': x['Region'].iloc[0]
-                    }
-                )
-            ).reset_index()
-            # print(f'Country: {country_data.head(10)}')
-            
-            # Merge DataFrames before writing to file
-            # merged_data = region_data.merge(right=subregion_data, on='Region', how='left')
-            merged_data = region_data.merge(right=country_data, on='Region', how='left') 
-            merged_data['Year'] = year.split('.')[0]
-            evolution = pd.concat([evolution, merged_data], ignore_index=True)
-        
-        evolution = evolution.sort_values(by='Year')
-        evolution.to_csv('../out/analysis/gdelt_media_evolution.csv', index=False)
-    else:
-        evolution = pd.read_csv('../out/analysis/gdelt_media_evolution.csv')
-    
-    # --------------- Create Plot ---------------
-    plt.figure(figsize=(12,6))
-    for name, group in evolution.groupby(by=granularity):
-        plt.plot(group.Year, group.RegionShare, label=name)
-
-    plt.legend(title=granularity)
-    plt.xlabel('Year')
-    plt.ylabel(f'% Share of a {granularity}\'s Media')
-    plt.title(f'Evolution of share of news articles per {granularity} in GDELT data')
-    plt.savefig(f'../out/analysis/{granularity}_continuous_media_share.png', dpi=1200)
-
-
-def plot_total_news_annual():
-    total = {}
-    for year in [str(y) for y in range(2015, 2024)]:
-        data = pd.read_csv(f'../data/raw/{year}.csv')
-        total[year] = data['GLOBALEVENTID'].count()
-
-    plt.figure(figsize=(12, 6))
-    plt.bar(total.keys(), total.values())
-    plt.xlabel('Year')
-    plt.ylabel('Total Number of News in Millions')
-    plt.title('Total number of news per year')
-    plt.savefig('../out/analysis/total_news_annual.png', dpi=1200)
-
-
+# ------------------ KEY PLAYER ------------------
 def create_dynamic_centrality_metric_table(edges: pd.DataFrame, nodes: pd.DataFrame, metric_name: str, metric_func: callable, use_weights=True) -> pd.DataFrame:
     """
     Helper tabular data generator for plot_centrality_over_time().
@@ -636,6 +493,7 @@ def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, n_top: int, pl
         plt.savefig(save_path)
 
 
+# ------------------ TONE SPREAD ------------------
 def plot_tone_spread(events, trigger_event_date:str, countries_of_interest:list[str], actors_involved:list[str], save_path:str=None, output_statistics=True):
     """
     Plots the tone spread of specified countries before and after the inflection point of the
@@ -787,6 +645,137 @@ def plot_tone_spread(events, trigger_event_date:str, countries_of_interest:list[
         statistics.write(statistics_df.to_latex(float_format=lambda x: f'{x:.2f}'.rstrip('0').rstrip('.')))
         statistics.close()
 
+
+# ------------------ MEDIA-DATA DISTRIBUTION ------------------
+def plot_media_share_discrete(years: list, granularity='Region', top=15) -> None:
+    """
+    A method to retrieve the share of news outlets per country per year.
+    The number of countries for which to plot their share can be regulated
+    via the 'top'-parameter and will default to the Top 15 otherwise.
+
+    :param data: A DataFrame containing the necessary shares to plot
+    :param years: The years for which to plot the data
+    :param granularity: The granularity [Region, Sub-Region] by which to group and plot
+    :param top: A regulating parameter to determine how many countries should be plotted
+    """    
+    if 'gdelt_media_evolution.csv' in os.listdir('../out/analysis'):
+        for year in years:
+            data = pd.read_csv('../out/analysis/gdelt_media_evolution.csv')
+            data = data[data['Year'] == int(year)]
+            data = data.sort_values(by='CountryShare', ascending=False).head(top).reset_index()
+            
+            # --------------- Create Plot ---------------
+            plt.figure(figsize=(12,6), dpi=1200)
+            for name, group in data.groupby(by=granularity):
+                plt.bar(group.URLOrigin, group.CountryShare, label=name)
+
+            plt.xlabel('Country')
+            plt.ylabel('%-Share of country-affiliated news outlets')
+            plt.title(f'The Top {top} share of country-affiliated news outlets in {year.split(".")[0]}')
+            plt.legend(title=granularity)
+            plt.savefig(f'../out/analysis/{granularity}_discrete_media_share_{year.split(".")[0]}.png', dpi=1200)
+
+    else:
+        print('Requires running `plot_media_share_continuous()` first.')
+        exit(1)
+
+
+def plot_media_share_continuous(years: list, granularity='Region') -> None:
+    """
+    Plot the share each regions makes up in the number of written news articles
+    versus the total amount of written articles for that year. Plot the continuous
+    evolution over the years.
+
+    :param years: A list of years for which to plot the evolution of GDELT media shares
+    :param granularity: The granularity [Region, Sub-Region] by which to group and plot
+    """
+    if 'gdelt_media_evolution.csv' not in os.listdir('../out/analysis'):
+        evolution = pd.DataFrame()
+        for year in years:
+            print(year)
+            data = pd.read_csv(f'../data/raw/{year}.csv')
+            data = clean_countrypairs(data)
+            # Drop entries for which no SOURCEURL is given
+            data.dropna(subset=['SOURCEURL'], inplace=True)
+
+            # Merge on media and region
+            map_media_to_country_origin(data, media=MEDIA)
+            merged_data = data.merge(right=REGIONS, left_on='URLOrigin', 
+                                    right_on='ISO', how='left')\
+                                    .drop(columns=['ISO', 'Country'])
+            
+            # Calculate per Region Share
+            total = len(data['NewsOutlet'].unique())
+            region_data = merged_data.groupby(by='Region').apply(
+                lambda x: pd.Series({
+                    'RegionShare': len(x['NewsOutlet'].unique()) / total,
+                    
+                })
+            ).reset_index()
+            # print(f'Region: {region_data}')
+
+            # TODO: Fix sub-regions
+            # subregion_data = merged_data.groupby(by='Sub-region').apply(
+            #     lambda x: pd.Series({
+            #         'SubRegionShare': len(x['NewsOutlet'].unique()) / total,
+            #         'Region': x['Region'].iloc[0]
+            #     })
+            # ).reset_index()
+            
+            # print(merged_data.columns)
+            # subregion_data = merged_data.merge(subregion_data, on='Sub-region', how='left')\
+            #                             .drop(columns=COL_KEEP_ANALYSIS + ['Region_y'])\
+            #                             .rename(columns={'Region_x': 'Region'})
+            # print(subregion_data)
+            # # print(f'Sub-Region: {subregion_data.head(10)}')
+
+            # Calculate per Country Share
+            country_data = merged_data.groupby(by='URLOrigin').apply(
+                lambda x: pd.Series({
+                    'CountryShare': (len(x['NewsOutlet'].unique()) / total),
+                    'Region': x['Region'].iloc[0]
+                    }
+                )
+            ).reset_index()
+            # print(f'Country: {country_data.head(10)}')
+            
+            # Merge DataFrames before writing to file
+            # merged_data = region_data.merge(right=subregion_data, on='Region', how='left')
+            merged_data = region_data.merge(right=country_data, on='Region', how='left') 
+            merged_data['Year'] = year.split('.')[0]
+            evolution = pd.concat([evolution, merged_data], ignore_index=True)
+        
+        evolution = evolution.sort_values(by='Year')
+        evolution.to_csv('../out/analysis/gdelt_media_evolution.csv', index=False)
+    else:
+        evolution = pd.read_csv('../out/analysis/gdelt_media_evolution.csv')
+    
+    # --------------- Create Plot ---------------
+    plt.figure(figsize=(12,6))
+    for name, group in evolution.groupby(by=granularity):
+        plt.plot(group.Year, group.RegionShare, label=name)
+
+    plt.legend(title=granularity)
+    plt.xlabel('Year')
+    plt.ylabel(f'% Share of a {granularity}\'s Media')
+    plt.title(f'Evolution of share of news articles per {granularity} in GDELT data')
+    plt.savefig(f'../out/analysis/{granularity}_continuous_media_share.png', dpi=1200)
+
+
+def plot_total_news_annual() -> None:
+    total = {}
+    for year in [str(y) for y in range(2015, 2024)]:
+        data = pd.read_csv(f'../data/raw/{year}.csv')
+        total[year] = data['GLOBALEVENTID'].count()
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(total.keys(), total.values())
+    plt.xlabel('Year')
+    plt.ylabel('Total Number of News in Millions')
+    plt.title('Total number of news per year')
+    plt.savefig('../out/analysis/total_news_annual.png', dpi=1200)
+
+
 if __name__ == '__main__':
     # IQR (inerquartile rate) outliers detection
     years = [str(year) for year in range(2015, 2024)]
@@ -813,7 +802,7 @@ if __name__ == '__main__':
     # toned = pd.read_csv('../out/2023/tone/edges_dynamic.csv')
     # cooc = pd.read_csv('../out/2023/cooccurrence/edges_undirected_dyn.csv')
     # # covtone(toned, cooc, ['ISR', 'PSE'], 3, write=True)
-    #media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0], write=True)   
+    # media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0], write=True)   
     # media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0,1], write=True)
     media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[2], write=True) 
 
