@@ -1,5 +1,11 @@
 # Ignore all files in the root directory
-/*
+.venv/
+.vscode/
+.idea/
+
+Code/data/raw/
+Code/gephi/
+Code/out/
 
 # Ignore .DS_Store
 .DS_Store
@@ -15,22 +21,3 @@ __pycache__
 
 # This file type
 *.gz
-
-# And this folder
-!Code/
-
-# Code/data/helper/
-# Code/data/*.csv
-Code/data/raw/
-Code/data/events/
-
-Code/out/edges/**/*.csv
-Code/out/nodes/**/*.csv
-
-Code/src/__pycache__/
-
-Code/src/temp.py
-
-
-Code/out/
-# !Code/data
