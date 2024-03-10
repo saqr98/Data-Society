@@ -1,6 +1,8 @@
 # Ignore all files in the root directory
 .venv/
 .vscode/
+.idea/
+
 Code/data/raw/
 Code/gephi/
 Code/out/
