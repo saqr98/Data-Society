@@ -20,7 +20,7 @@ from metrics import betweenness, closeness, eigenvector
 PATH = '../data/raw/'
 
 # https://unstats.un.org/unsd/methodology/m49/overview/
-REGIONS = pd.read_csv('../data/country_region.csv')
+REGIONS = pd.read_csv('../data/helper/country_region.csv')
 
 MEDIA = pd.read_csv('../data/helper/media_country_code_mapping.csv')
 
@@ -411,7 +411,6 @@ def create_dynamic_centrality_metric_table(edges: pd.DataFrame, nodes: pd.DataFr
             use_weights=use_weights
         )
         metric_score.set_index("ID", inplace=True)
-    
         metric_score_dynamic = pd.merge(
             left=metric_score_dynamic,
             right=metric_score[[metric_name]],
@@ -451,8 +450,7 @@ def plot_centrality_over_time(metric_score_dynamic: pd.DataFrame, n_top: int, pl
     else:
         df = df[~df.index.isin(superpowers)]
 
-    # Dictionary to assign color to each country
-    country_colors = {}
+    country_colors = {} # Dictionary to assign color to each country
     plt.figure(figsize=(10, 15))
     for time_period in df.columns:
         # Sort by centrality and take first n_top countries that will appear in the graph
@@ -639,9 +637,6 @@ def plot_tone_spread(events, trigger_event_date:str, countries_of_interest:list[
         statistics_df.columns = pd.MultiIndex.from_tuples(
         [("Before", col) if i < len(countries_of_interest) else ("After", col) for i, col in enumerate(statistics_df.columns)]
         )
-    
-        print(statistics_df)
-
         statistics.write(statistics_df.to_latex(float_format=lambda x: f'{x:.2f}'.rstrip('0').rstrip('.')))
         statistics.close()
 

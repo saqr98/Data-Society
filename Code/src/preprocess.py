@@ -13,7 +13,7 @@ def dynamic(events: pd.DataFrame, freq='D'):
     :return: Returns a pandas GroupBy-object
     """
     # Convert dates to specified datetime format
-    events['SQLDATE'] = pd.to_datetime(events['SQLDATE'], format='%Y%m%d')
+    events['SQLDATE'] = pd.to_datetime(events['SQLDATE'], format='%Y%m%d', errors="coerce").dropna()
     
     # Remove non-country actors & create country pairs
     events = clean_countrypairs(events)

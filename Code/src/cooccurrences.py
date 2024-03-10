@@ -4,7 +4,7 @@ from preprocess import *
 from metrics import *
 
 
-def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=False, freq="D") -> pd.DataFrame:
+def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=False, freq="M") -> pd.DataFrame:
     """
     Calculates network edges based on the number of cooccurences of each unique pair
     of countries in 'events'. Note that the returned edges are for directed graph, e.g.
