@@ -28,8 +28,6 @@ MEDIA = pd.read_csv('../data/helper/media_country_code_mapping.csv')
 FOP_NEW = pd.read_csv('../data/helper/fop_rsf_22_23.csv')
 FOP_OLD = pd.read_csv('../data/helper/fop_rsf_15_21.csv')
 
-plt.rcParams.update({'font.size': 20})
-
 
 # ------------------ EVENT POLARIZATION ------------------
 def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False) -> pd.Series:
@@ -760,6 +758,9 @@ def plot_media_share_continuous(years: list, granularity='Region') -> None:
 
 
 def plot_total_news_annual() -> None:
+    """
+    Plot the total number of annual news.
+    """
     total = {}
     for year in [str(y) for y in range(2015, 2024)]:
         data = pd.read_csv(f'../data/raw/{year}.csv')

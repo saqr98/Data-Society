@@ -11,6 +11,7 @@ from tone import tone
 from config import CORES
 from cooccurrences import cooccurrences
 from helper import split_into_chunks, clean_dir, Colors
+from analyse import perform_country_centrality_analysis, perform_comparison
 from preprocess import create_undirected_network, create_nodes, create_edges
 
 
@@ -179,11 +180,20 @@ if __name__ == '__main__':
     GENERATE_NETWORKS = True
     GENERATE_ALL_TYPES = True  # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
     GENERATE_PLOTS = True
+    PERORM_ANALYSES = True
     
+    # Set many = True, iff networks should be generated concurrently for all years
+    # Specify number of cores of local machine for optimal performance
     many = False
+    #CORES = CORES
+    regenerate = True # Regenerates networks
     start, end = 2015, 2023
     years = np.arange(start, end + 1)
     n_type = 'cooccurrence'  # 'tone'
+
+    # Remove old network files if network should be regenerated
+    if regenerate:
+        tmp = [clean_dir(f'../out/{y}/{n_type}') for y in years if os.path.exists(f'../out/{y}/{n_type}')]
 
     # ------------- GENERATING NETWORKS -------------
 
@@ -276,3 +286,21 @@ if __name__ == '__main__':
         plot_tone_spread_rus_ukr_event(plot_insider_tone=True)
         plot_tone_spread_rus_ukr_event(plot_insider_tone=False)
 
+        year = 2022
+        actors = ['RUS', 'UKR']
+        events = pd.read_csv(f'../data/raw/{year}.csv', parse_dates=['SQLDATE'])
+        events = clean_countrypairs(events)
+
+        media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0], write=True)   
+        media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0,1], write=True)
+        media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[2], write=True) 
+
+
+    # ------------- PERFORM ANALYSES -------------
+    if PERORM_ANALYSES:
+        # Compare tone and cooccurrence approaches
+        perform_comparison()
+    
+        # Analyze centrality changes
+        perform_country_centrality_analysis()
+      

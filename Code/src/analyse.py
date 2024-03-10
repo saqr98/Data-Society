@@ -7,18 +7,23 @@ from scipy.stats import kruskal, mannwhitneyu, spearmanr
 
 
 # ------------------ EVENT POLARIZATION ------------------
-def perform_kruskal_wallis(data, continuous_var, categorical_var):
+def _perform_kruskal_wallis(data, continuous, categorical):
     """
     Function to perform Kruskal-Wallis H test for a continuous 
     variable across different categories of a categorical variable.
+
+    :param data: Data to perform Kruskal-Wallis test on
+    :param continuous: The continuous variable to test
+    :param categorical: The categorical variable to test against
+    :return: `KruskalResult`-object
     """
-    categories = data[categorical_var].unique()
-    groups = [data[data[categorical_var] == category][continuous_var] for category in categories]
+    categories = data[categorical].unique()
+    groups = [data[data[categorical] == category][continuous] for category in categories]
     kruskal_test = kruskal(*groups)
     return kruskal_test
 
 
-def perform_mannwhitneyu(before: pd.DataFrame, after: pd.DataFrame) -> dict:
+def _perform_mannwhitneyu(before: pd.DataFrame, after: pd.DataFrame) -> dict:
     """
     Perform Mann-Whitney-U test to compare data before and after
     inflection point due to major event.
@@ -32,21 +37,26 @@ def perform_mannwhitneyu(before: pd.DataFrame, after: pd.DataFrame) -> dict:
         mwu_test_results[column] = p
 
 
-def post_hoc(data):
+def _post_hoc(data) -> pd.DataFrame:
+    """
+    Perform post-hoc analysis using Dunn's test.
+
+    :param data: Data to perform post-hoc analysis on
+    """
     topic_share_data = data[['Region', 'TopicShare']]
     labels, uniques = pd.factorize(topic_share_data['Region'])
 
     # Perform Dunn's post-hoc test
     dunn_test = posthoc_dunn(topic_share_data, val_col='TopicShare', group_col='Region', p_adjust='bonferroni')
-    print(dunn_test)
+    return dunn_test
 
 
 def stat_analysis(data: pd.DataFrame, actors=None, mode=0) -> pd.DataFrame:
     """
-    A method to perform simple statistical tests on
+    A method to conduct various statistical tests on
     data prior to and after an event occurred, taking into
     consideration regional, per-country or freedom of press
-    scores.
+    scores. It writes results to a file.
 
     :param data: The data to analyze
     :param actors: The list of actors involved in the event
@@ -56,10 +66,12 @@ def stat_analysis(data: pd.DataFrame, actors=None, mode=0) -> pd.DataFrame:
            mode=1 -> [0, 1]
            mode=2 -> [2]
         ```
+    :return: A `Spearman` correlation matrix for the data
     """
-    # Correlation Matrix
     if actors is None:
         actors = [str]
+
+    # Correlation Matrix
     corr_matrix = data[['Tone', 'TopicCount', 'TotalCount', 'TopicShare']].corr(method='spearman')
 
     # Get extremes
@@ -78,50 +90,52 @@ def stat_analysis(data: pd.DataFrame, actors=None, mode=0) -> pd.DataFrame:
         directory = 'Period'
         kw_before = {}
         kw_after = {}
+
         # General descriptive statistics
         general = data.groupby('Period')[['Tone', 'TopicCount', 'TotalCount', 'TopicShare']].describe()
         regional = data.groupby(['Period', 'Region'])[['Tone', 'TopicCount', 'TotalCount', 'TopicShare']].describe()
         
         # Split data
-        print(data['Region'].nunique())
         before = data[data['Period'] == 'Before']
         after = data[data['Period'] == 'After']
 
         median_values_before = before.groupby('Region')[['Tone', 'TopicCount', 'TotalCount', 'TopicShare']].median()
         median_values_after = after.groupby('Region')[['Tone', 'TopicCount', 'TotalCount', 'TopicShare']].median()
 
-        # Display the median values for better understanding of the differences across regions and periods
-        print(median_values_before, median_values_after)
-
         # Perform Kruskal-Wallis test for each continuous variable across regions for 'before' and 'after' periods
         for column in ['Tone', 'TopicCount', 'TotalCount', 'TopicShare']:
-            kw_before[column] = perform_kruskal_wallis(before, column, 'Region')
-            kw_after[column] = perform_kruskal_wallis(after, column, 'Region')
+            kw_before[column] = _perform_kruskal_wallis(before, column, 'Region')
+            kw_after[column] = _perform_kruskal_wallis(after, column, 'Region')
             
         res = (kw_before, kw_after)
-        post_hoc(before)
-        post_hoc(after)
+
+        # Perform post-hoc analysis
+        _post_hoc(before)
+        _post_hoc(after)
 
     elif mode == 2:
         directory = 'FPI'
         kw_region = {}
         kw_class = {}
+
         # General descriptive statistics
         general = data[['Tone', 'TopicCount', 'TotalCount', 'TopicShare', 'Score']].describe()
-        print(data.groupby('Region')[['Tone', 'TopicCount', 'TotalCount', 'TopicShare', 'Score']].describe())
+        regional = data.groupby('Region')[['Tone', 'TopicCount', 'TotalCount', 'TopicShare', 'Score']].describe()
 
-        # Correlation Matrix
+        # Correlation Matrix and Spearman rank correlation
         corr_matrix = data[['Tone', 'TopicCount', 'TotalCount', 'TopicShare', 'Score']].corr(method='spearman')
-        print(spearmanr(data))
+        spearman = spearmanr(data)
 
         # Perform Kruskal-Wallis test for 'Tone', 'TopicCount', 'TopicShare', and 'Score'
         for var in ['Tone', 'TopicCount', 'TopicShare', 'Score']:
             # By Region and WPFI class
-            kw_region[var] = perform_kruskal_wallis(data, var, 'Region')
-            kw_class[var] = perform_kruskal_wallis(data, var, 'Class')
+            kw_region[var] = _perform_kruskal_wallis(data, var, 'Region')
+            kw_class[var] = _perform_kruskal_wallis(data, var, 'Class')
 
         res = (kw_region, kw_class)
-        post_hoc(data)
+
+        # Perform post-hoc analysis
+        _post_hoc(data)
 
     # Create dir, iff it doesn't exist
     path = f'../out/analysis/{actors[0]}_{actors[1]}/{directory}'
@@ -134,14 +148,14 @@ def stat_analysis(data: pd.DataFrame, actors=None, mode=0) -> pd.DataFrame:
         f.write('--------------------- General ---------------------\n')
         f.write(general.to_string() + '\n\n')
 
-        # if mode == 2:
-        #     f.write('--------------------- REGIONAL ---------------------\n')
-        #     f.write(regional.to_string() + '\n\n')
-
         f.write('--------------------- Correlation ---------------------\n')
-        f.write(corr_matrix.to_string() + '\n\n')
+        f.write(corr_matrix.to_string() + '\n')
 
-        f.write('--------------------- Kruskal-Wallis ---------------------\n')
+        # if mode == 2 and spearman:
+        #     f.write('--------------------- Spearman Rank Correlation ---------------------\n')
+        #     print(spearman)
+
+        f.write('\n--------------------- Kruskal-Wallis ---------------------\n')
         if mode == 1:
             for i, r in enumerate(res):
                 t = 'Before' if not i else 'After'
@@ -149,6 +163,12 @@ def stat_analysis(data: pd.DataFrame, actors=None, mode=0) -> pd.DataFrame:
                 i = 0
                 for k, v in r.items(): 
                     f.write(f'{k}\n\tF-Statistic = {v.statistic: .2f}\n\tp-Value = {v.pvalue}\n\n')
+
+            f.write('\n--------------------- Regional Median Values -- Before ---------------------\n')
+            f.write(f'{median_values_before.to_string()}\n')
+
+            f.write('\n--------------------- Regional Median Values -- After ---------------------\n')
+            f.write(f'{median_values_after.to_string()}\n')
 
         elif mode == 2:
             for i, r in enumerate(res):
@@ -158,7 +178,10 @@ def stat_analysis(data: pd.DataFrame, actors=None, mode=0) -> pd.DataFrame:
                 for k, v in r.items(): 
                     f.write(f'{k}\n\tF-Statistic = {v.statistic: .2f}\n\tp-Value = {v.pvalue}\n\n')
 
-        f.write('--------------------- Extremes ---------------------\n')
+            f.write('\n--------------------- REGIONAL ---------------------\n')
+            f.write(regional.to_string() + '\n\n')
+
+        f.write('\n--------------------- Extremes ---------------------\n')
         f.write(f'Max. neg:\n{data.loc[max_neg]}\n\nMin. neg:\n{data.loc[min_neg]}\n\n')
         f.write(f'Max. count:\n{data.loc[max_count]}\n\nMin. count:\n{data.loc[min_count]}\n')
 
@@ -166,7 +189,18 @@ def stat_analysis(data: pd.DataFrame, actors=None, mode=0) -> pd.DataFrame:
 
 
 # ------------------ KEY PLAYERS ------------------
-def avg_centrality(actor1: str, cent=0, ty=True) -> None:
+def _avg_centrality(actor1: str, cent=0, ty=True) -> None:
+    """
+    Calculates the average centrality of for all unique actors for
+    the years 2015 to 2023 and writes these values to a file.
+
+    :param cent: The centrality metrics to use
+        ```cent=0 -> Betweenness Centrality
+           cent=1 -> Eigenvector Centrality
+           cent=2 -> Closeness Centrality
+        ```
+    :param ty: The type of the network. Co-occurrences, iff `True` else tone.
+    """
     actors = pd.read_csv('../data/helper/countrycodes_extended.csv', sep=',')['ISO-alpha3 code'].values.tolist()
 
     cntrlty = {}
@@ -174,7 +208,7 @@ def avg_centrality(actor1: str, cent=0, ty=True) -> None:
     match cent:
         case 0: metric = 'BetweennessCentrality'
         case 1: metric = 'EigenvectorCentrality'
-        case 1: metric = 'ClosenessCentrality'
+        case 2: metric = 'ClosenessCentrality'
 
     years = [str(y) for y in range(2015, 2024)]
     network_type = 'cooccurrence' if ty else 'tone'
@@ -203,7 +237,7 @@ def avg_centrality(actor1: str, cent=0, ty=True) -> None:
         f.write(cntrlty.sort_values(by='AvgCentrality', ascending=False).head(15).to_string(index=False) + '\n')
 
 
-def centrality_change(actor: str, years: list, c=0, ty=True) -> float:
+def _centrality_change(actor: str, years: list, c=0, ty=True) -> float:
     """
     Calculates the percentage change in centrality of a 
     country from the start to the end of a given time period.
@@ -235,8 +269,21 @@ def centrality_change(actor: str, years: list, c=0, ty=True) -> float:
     return round(change, 2)
 
 
+def perform_country_centrality_analysis():
+    # Analyze centrality changes
+    change = {}
+    avg_cntrlty = _avg_centrality('FRA')
+    for c in ['USA', 'RUS', 'CHN', 'DEU']:
+        change[c] = _centrality_change(c, ['2015', '2023'])
+
+    with open('../out/analysis/Centrality/general_stats_centrality.txt', 'a') as f:
+        f.write('\n--------------------- Betweenness Centrality %-Change ---------------------\n')
+        for k, v in change.items():
+            f.write(f'{k} --- {v}%\n')
+
+
 # ------------------ METHODOLOGICAL COMPARISON ------------------
-def compare_approaches(year: str, threshold=5) -> int:
+def _compare_approaches(year: str, threshold=5) -> int:
     """
     This method is used to compare the tone and cooccurrence
     approach by using the Betweenness Centrality of individual
@@ -263,44 +310,58 @@ def compare_approaches(year: str, threshold=5) -> int:
     rank_vec_2 = {country: rank for rank, country in enumerate(bct_sorted['ID'])}
 
     # Apply the comparison function and count the number of significant shifts
-    significant_shifts = sum(compare_ranks(id, threshold, rank_vec_1, rank_vec_2) for id in rank_vec_1.keys())
+    significant_shifts = sum(_compare_ranks(id, threshold, rank_vec_1, rank_vec_2) for id in rank_vec_1.keys())
     return round((significant_shifts / bcc_sorted['ID'].nunique()) * 100, 2)
 
 
-def compare_ranks(id, threshold, vec_1, vec_2):
+def _compare_ranks(id: str, threshold: int, vec_1: dict, vec_2: dict) -> bool:
     """
     A method to compare the absolute rank difference of a
     a country in the tone versus cooccurrence network.
 
     :param id: The countries ISO-code
+    :param threshold: The threshold for significant rank changes
+    :param vec_1: A country-rank vector for the value before
+    :param vec_2: A country-rank vector for the value after
     """
     rank_1 = vec_1.get(id)
     rank_2 = vec_2.get(id)
     return abs(rank_1 - rank_2) > threshold
     
 
+def perform_comparison():
+    """
+    Compares the annual country-wise shifts based centrality
+    ranks and writes results to a file.
+    """
+    # Compare tone and cooccurrence approaches
+    res = {}
+    for year in [str(y) for y in range(2015, 2024)]:
+        res[year] = _compare_approaches(year)
+
+    tmp = 0
+    for r in res.values():
+        tmp += r
+
+    # Create dir, iff it doesn't exist
+    path = '../out/analysis/Comparison'
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+    with open(f'{path}/comparison_results.txt', 'w') as f:
+        f.write('--------------------- TOTAL AVERAGE SHIFTS ---------------------\n')
+        f.write(f'Total Average Shifts in the period from 2015 to 2023: {tmp / len(range(2015, 2024))}\n')
+        f.write('--------------------- ANNUAL OVERVIEW ---------------------\n')
+        for k, v in res.items():
+            f.write(f'{k, v}\n')
+
+
 if __name__=='__main__':
     # Compare tone and cooccurrence approaches
-    # res = {}
-    # for year in [str(y) for y in range(2015, 2024)]:
-    #     res[year] = compare_approaches(year)
+    perform_comparison()
 
-    # print(res)
-    # tmp = 0
-    # for r in res.values():
-    #     tmp += r
-    # print(f'Total Average Shifts: {tmp / len(range(2015, 2024))}')
-    
     # Analyze centrality changes
-    change = {}
-    avg_cntrlty = avg_centrality('FRA')
-    for c in ['USA', 'RUS', 'CHN', 'DEU']:
-        change[c] = centrality_change(c, ['2015', '2023'])
-
-    with open('../out/analysis/Centrality/general_stats_centrality.txt', 'a') as f:
-        f.write('\n--------------------- Betweenness Centrality %-Change ---------------------\n')
-        for k, v in change.items():
-            f.write(f'{k} --- {v}%\n')
+    perform_country_centrality_analysis()
     
 
         
