@@ -28,6 +28,8 @@ MEDIA = pd.read_csv('../data/helper/media_country_code_mapping.csv')
 FOP_NEW = pd.read_csv('../data/helper/fop_rsf_22_23.csv')
 FOP_OLD = pd.read_csv('../data/helper/fop_rsf_15_21.csv')
 
+plt.rcParams.update({'font.size': 20})
+
 
 # ------------------ EVENT POLARIZATION ------------------
 def dyn_tone(events: pd.DataFrame, actors: [], alters: [], write=False) -> pd.Series:
@@ -797,8 +799,8 @@ if __name__ == '__main__':
     # toned = pd.read_csv('../out/2023/tone/edges_dynamic.csv')
     # cooc = pd.read_csv('../out/2023/cooccurrence/edges_undirected_dyn.csv')
     # # covtone(toned, cooc, ['ISR', 'PSE'], 3, write=True)
-    # media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0], write=True)   
-    # media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0,1], write=True)
+    media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0], write=True)   
+    media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[0,1], write=True)
     media_polarization(events, actors, pd.to_datetime('2022-02-24'), mode=[2], write=True) 
 
     # plot_total_news_annual()  

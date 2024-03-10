@@ -295,7 +295,7 @@ if __name__=='__main__':
     change = {}
     avg_cntrlty = avg_centrality('FRA')
     for c in ['USA', 'RUS', 'CHN', 'DEU']:
-        change[c] = centrality_change(c, ['2017', '2023'])
+        change[c] = centrality_change(c, ['2015', '2023'])
 
     with open('../out/analysis/Centrality/general_stats_centrality.txt', 'a') as f:
         f.write('\n--------------------- Betweenness Centrality %-Change ---------------------\n')
