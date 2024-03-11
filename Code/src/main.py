@@ -185,9 +185,9 @@ if __name__ == '__main__':
     PERORM_ANALYSES = True
     
     # Set many = True, iff networks should be generated concurrently for all years
-    # Specify number of cores of local machine for optimal performance
     many = False
-    #CORES = CORES
+    # Iff many=True, specify number of cores of local machine for optimal performance
+    #CORES = int for number of cores
     regenerate = True # Regenerates networks
     start, end = 2015, 2023
     years = np.arange(start, end + 1)
