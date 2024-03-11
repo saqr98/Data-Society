@@ -186,7 +186,7 @@ if __name__ == '__main__':
     # ------------- CONFIGURATIONS -------------
     
     GENERATE_NETWORKS = True
-    GENERATE_ALL_TYPES =  True # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
+    GENERATE_ALL_TYPES =  False # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
     GENERATE_PLOTS = True
     PERFORM_ANALYSES = True
     
