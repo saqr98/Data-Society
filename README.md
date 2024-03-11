@@ -24,5 +24,8 @@ which python
 pip install -r ./requirements.txt 
 ```
 5. Download and place raw datasets in the following directory: `./Code/data/raw/`
-6. Change your working directory to `Code/src`
+6. Change your working directory:
+```
+cd ./Code/src
+```
 7. Make sure that virtual environment is activated and run `python main.py`. This should generate nodes and edges for static and dynamic networks for years from 2015 to 2023. Additionally, in `Code/data/out/analysis/` folder you will find all graphs from the report.

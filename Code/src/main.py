@@ -180,12 +180,15 @@ def plot_tone_spread_rus_ukr_event(plot_insider_tone):
 
 if __name__ == '__main__':
 
+    import time
+    start_time = time.time()
+
     # ------------- CONFIGURATIONS -------------
     
-    GENERATE_NETWORKS = False
-    GENERATE_ALL_TYPES = False  # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
+    GENERATE_NETWORKS = True
+    GENERATE_ALL_TYPES =  True # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
     GENERATE_PLOTS = True
-    PERFORM_ANALYSES = False
+    PERFORM_ANALYSES = True
     
     # Set many = True, iff networks should be generated concurrently for all years
     many = False
@@ -311,4 +314,8 @@ if __name__ == '__main__':
     
         # Analyze centrality changes
         perform_country_centrality_analysis()
+    
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"[{Colors.BLUE}*{Colors.RESET}] Execution time: {execution_time:.2f} seconds")
       
