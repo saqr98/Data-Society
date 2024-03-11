@@ -235,10 +235,8 @@ def get_inflections(tone: pd.Series, mode=1, threshold=2):
         # Identify anomalies exceeding Z-score threshold
         anomalies = np.abs(scores) > threshold
         idx = np.nonzero(anomalies)[0]
-        print(f'Z-SCORE INDECES: {idx}')
     else:
         idx = interquartile_range(tone)
-        print(f'IQR INDECES: {tone.iloc[idx]}')
     return tone.iloc[idx]
 
 
@@ -277,7 +275,6 @@ def interquartile_range(data: pd.Series):
 
     # Filter anomalies
     anomalies = data[(data < lower_bound) | (data > upper_bound)]
-    print(f'ANOMALIES: {anomalies}')
     return anomalies
 
 
@@ -374,7 +371,7 @@ def remove_non_country_events(events: pd.DataFrame):
         ).all(axis=1)].copy()
     new_size = events.shape[0]
 
-    print(f"Ratio of rows removed: {(old_size - new_size)/old_size:.2f}")
+    # print(f"Ratio of rows removed: {(old_size - new_size)/old_size:.2f}")
     
     return events
 

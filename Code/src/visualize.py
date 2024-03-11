@@ -687,7 +687,6 @@ def plot_media_share_continuous(years: list, granularity='Region') -> None:
     if 'gdelt_media_evolution.csv' not in os.listdir('../out/analysis'):
         evolution = pd.DataFrame()
         for year in years:
-            print(year)
             data = pd.read_csv(f'../data/raw/{year}.csv')
             data = clean_countrypairs(data)
             # Drop entries for which no SOURCEURL is given

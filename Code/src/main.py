@@ -65,6 +65,8 @@ def calculate_metrics(n_type, years):
         
         # Write calculated metrics to nodes file
         nodes.to_csv(f'../out/{year}/{n_type}/nodes.csv', sep=',', index=False)
+
+    if len(years) == 1:    
         return (year, score)
 
 
@@ -179,7 +181,7 @@ if __name__ == '__main__':
     
     GENERATE_NETWORKS = True
     GENERATE_ALL_TYPES = True  # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
-    GENERATE_PLOTS = True
+    GENERATE_PLOTS = False
     PERORM_ANALYSES = True
     
     # Set many = True, iff networks should be generated concurrently for all years
@@ -189,11 +191,15 @@ if __name__ == '__main__':
     regenerate = True # Regenerates networks
     start, end = 2015, 2023
     years = np.arange(start, end + 1)
+    print(years)
     n_type = 'cooccurrence'  # 'tone'
 
     # Remove old network files if network should be regenerated
     if regenerate:
-        tmp = [clean_dir(f'../out/{y}/{n_type}') for y in years if os.path.exists(f'../out/{y}/{n_type}')]
+        for ty in ['tone', 'cooccurrence']:
+            for y in years:
+                if os.path.exists(f'../out/{y}/{ty}'):
+                    clean_dir(f'../out/{y}/{ty}')
 
     # ------------- GENERATING NETWORKS -------------
 
@@ -223,7 +229,7 @@ if __name__ == '__main__':
                 calculate_metrics(n_type, years)  # Calculate centrality metrics for static networks
 
                 print(f'[{Colors.BLUE}*{Colors.RESET}] Creating dynamic {n_type} network for year(s): {years}.')
-                create_annual_network(n_type, years, dynam=True)  # Create dynamic networks
+                # create_annual_network(n_type, years, dynam=True)  # Create dynamic networks
 
     
     # ------------- PLOTTING GRAPHS -------------

@@ -79,7 +79,6 @@ def closeness(nodes: pd.DataFrame, edges: pd.DataFrame, use_weights=True):
     edges["InvertedWeight"] = 1 / edges["Weight"]
     pd.options.mode.chained_assignment = 'warn'
     graph = nx.from_pandas_edgelist(edges, source='Source', target='Target', edge_attr='InvertedWeight')
-    print(edges.head())
     
     # Calculate Closeness Centrality and create DataFrame
     if use_weights:
