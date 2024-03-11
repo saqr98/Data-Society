@@ -37,6 +37,9 @@ def create_annual_network(n_type, years, dynam):
         edges = create_edges(undir_ntwk.reset_index())
         nodes = create_nodes(edges)
 
+        if not os.path.exists(f'../out/{year}'):
+            os.mkdir(f'../out/{year}')
+
         if not os.path.exists(f'../out/{year}/{n_type}'):
             os.mkdir(f'../out/{year}/{n_type}')
 
@@ -181,17 +184,16 @@ if __name__ == '__main__':
     
     GENERATE_NETWORKS = True
     GENERATE_ALL_TYPES = True  # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
-    GENERATE_PLOTS = False
+    GENERATE_PLOTS = True
     PERORM_ANALYSES = True
     
     # Set many = True, iff networks should be generated concurrently for all years
     many = False
     # Iff many=True, specify number of cores of local machine for optimal performance
-    #CORES = int for number of cores
+    # CORES = int for number of cores
     regenerate = True # Regenerates networks
     start, end = 2015, 2023
     years = np.arange(start, end + 1)
-    print(years)
     n_type = 'cooccurrence'  # 'tone'
 
     # Remove old network files if network should be regenerated

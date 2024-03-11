@@ -31,7 +31,6 @@ def modularity(nodes: pd.DataFrame, edges: pd.DataFrame, resolution=1.0, use_wei
     # Merge results with list of nodes and write to orginal file
     nodes = pd.merge(nodes, classes, on='ID', how='left')
     # nodes.to_csv(OUT, sep=',', index=False)
-    # TODO: Write modularity score to file
     print(f'Calculated modularity score: {m_score}')
     return m_score, nodes
 
