@@ -34,7 +34,7 @@ def cooccurrences(events: pd.DataFrame, weight_by_num_mentions=False, dynam=Fals
 
     # Normalization is a bit different for static and dynamic
     if dynam:
-        weight_normalized = weight_abs.groupby(level=0, group_keys=False)\
+        weight_normalized = weight_abs.groupby(level=0, group_keys=True)\
             .apply(lambda x: x / x.sum())\
             .droplevel(0)\
             .reset_index()
