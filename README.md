@@ -28,4 +28,4 @@ pip install -r ./requirements.txt
 ```
 cd ./Code/src
 ```
-7. Make sure that virtual environment is activated and run `python main.py`. This should generate nodes and edges for static and dynamic networks for years from 2015 to 2023. Additionally, in `Code/data/out/analysis/` folder you will find all graphs from the report.
+7. Make sure that virtual environment is activated and run `python main.py`. This should generate nodes and edges for static and dynamic networks for years from 2015 to 2023. Additionally, in `Code/data/out/analysis/` folder you will find all graphs from the report. On a laptop with 16GB of RAM, the running time is around 20 minutes.
