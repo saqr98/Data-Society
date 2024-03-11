@@ -182,16 +182,16 @@ if __name__ == '__main__':
 
     # ------------- CONFIGURATIONS -------------
     
-    GENERATE_NETWORKS = True
-    GENERATE_ALL_TYPES = True  # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
+    GENERATE_NETWORKS = False
+    GENERATE_ALL_TYPES = False  # If set to True, generate both cooccurrence and tone networks; otherwise, specify `n_type` below.
     GENERATE_PLOTS = True
-    PERORM_ANALYSES = True
+    PERFORM_ANALYSES = False
     
     # Set many = True, iff networks should be generated concurrently for all years
     many = False
     # Iff many=True, specify number of cores of local machine for optimal performance
     # CORES = int for number of cores
-    regenerate = True # Regenerates networks
+    regenerate = False # Regenerates networks
     start, end = 2015, 2023
     years = np.arange(start, end + 1)
     n_type = 'cooccurrence'  # 'tone'
@@ -305,7 +305,7 @@ if __name__ == '__main__':
 
 
     # ------------- PERFORM ANALYSES -------------
-    if PERORM_ANALYSES:
+    if PERFORM_ANALYSES:
         # Compare tone and cooccurrence approaches
         perform_comparison()
     
