@@ -231,7 +231,7 @@ if __name__ == '__main__':
                 calculate_metrics(n_type, years)  # Calculate centrality metrics for static networks
 
                 print(f'[{Colors.BLUE}*{Colors.RESET}] Creating dynamic {n_type} network for year(s): {years}.')
-                # create_annual_network(n_type, years, dynam=True)  # Create dynamic networks
+                create_annual_network(n_type, years, dynam=True)  # Create dynamic networks
 
     
     # ------------- PLOTTING GRAPHS -------------
