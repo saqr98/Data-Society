@@ -262,7 +262,7 @@ def plot_polarization_fop(dfs: list, actors: list, inflection_date, stat_test=Tr
     if stat_test:
         corr_matrix = stat_analysis(res, actors, mode=2)
         # Plot Correlation Matrix
-        plot_correlation(corr_matrix)
+        plot_correlation(corr_matrix, 'FPI')
 
     # Show or write plot
     plt.xlabel('Tone')
@@ -296,7 +296,7 @@ def plot_polarization_after(dfs: list, actors: list, inflection_date, stat_test=
     if stat_test:
         corr_matrix = stat_analysis(res, actors)
         # Plot Correlation Matrix
-        plot_correlation(corr_matrix)
+        plot_correlation(corr_matrix, 'After')
 
     # Show or write plot
     plt.xlabel('Tone')
@@ -343,7 +343,7 @@ def plot_polarization_before_after(dfs: list, actors: list, inflection_date, sta
     if stat_test:
         corr_matrix = stat_analysis(res, actors, mode=1)
         # Plot Correlation Matrix
-        plot_correlation(corr_matrix)
+        plot_correlation(corr_matrix, 'Period')
 
     # Show or write plot
     plt.xlabel('Tone')
@@ -360,7 +360,7 @@ def plot_polarization_before_after(dfs: list, actors: list, inflection_date, sta
         plt.show()
 
 
-def plot_correlation(matrix: pd.DataFrame) -> None:
+def plot_correlation(matrix: pd.DataFrame, dir: str) -> None:
     # Set the style of the visualization
     sns.set_theme(style="white", font_scale=1.5)
 
@@ -376,7 +376,7 @@ def plot_correlation(matrix: pd.DataFrame) -> None:
                 square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot_kws={'fontsize': 12})
 
     # plt.title('Event-related Correlation Matrix')
-    plt.savefig('../out/analysis/RUS_UKR/FPI/corr.png', dpi=800)
+    plt.savefig(f'../out/analysis/RUS_UKR/{dir}/corr.png', dpi=800)
     plt.close()
 
 
